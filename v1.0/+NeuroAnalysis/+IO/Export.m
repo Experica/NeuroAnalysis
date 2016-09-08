@@ -1,5 +1,5 @@
 function [ result ] = Export(dataset, exportpath,varargin )
-%EXPORT Export prepared dataset in Matlab MAT file
+%EXPORT Export prepared dataset in Matlab MAT format file
 %   Detailed explanation goes here
 
 %% Parse arguments

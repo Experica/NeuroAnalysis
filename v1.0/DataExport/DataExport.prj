@@ -1,15 +1,20 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3420384008" file="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="254350220" file="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
-    <param.icon />
-    <param.icons />
+    <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
+    <param.icons>
+      <file>${PROJECT_ROOT}\DataExport_resources\icon_48.png</file>
+      <file>${PROJECT_ROOT}\DataExport_resources\icon_32.png</file>
+      <file>${PROJECT_ROOT}\DataExport_resources\icon_24.png</file>
+      <file>${PROJECT_ROOT}\DataExport_resources\icon_16.png</file>
+    </param.icons>
     <param.version>1.0</param.version>
     <param.authnamewatermark>Alex</param.authnamewatermark>
     <param.email>fff008@gmail.com</param.email>
     <param.company>Alex-Joyce</param.company>
     <param.summary>Export VLab and Signal Data as Matlab MAT File</param.summary>
     <param.description />
-    <param.screenshot />
+    <param.screenshot>${PROJECT_ROOT}\noun_dataexport_cc.png</param.screenshot>
     <param.guid />
     <param.installpath.string>\Alex-Joyce\DataExport\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
@@ -33,16 +38,13 @@
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
     <param.windows.command.prompt>true</param.windows.command.prompt>
     <param.create.log>true</param.create.log>
-    <param.log.file>log.txt</param.log.file>
+    <param.log.file>DataExportLog.txt</param.log.file>
     <unset>
-      <param.icon />
-      <param.icons />
       <param.version />
       <param.authnamewatermark />
       <param.email />
       <param.company />
       <param.description />
-      <param.screenshot />
       <param.guid />
       <param.installpath.string />
       <param.installpath.combo />

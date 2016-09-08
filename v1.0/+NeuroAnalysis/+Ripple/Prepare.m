@@ -1,5 +1,5 @@
 function [ dataset ] = Prepare( filepath,varargin )
-%PREPARE Read Ripple data by Ripple neuroshare, VLab data and prepare dataset
+%PREPARE Read Ripple data by Ripple neuroshare API, VLab data and prepare dataset
 %   Detailed explanation goes here
 
 p = inputParser;
@@ -106,8 +106,8 @@ if(isrippledata)
                     spike = struct;
                     for i = 1:nsEntityInfo.ItemCount
                         [ns_RESULT, spike.time(i), spike.data(:,i), ~, spike.unitid(i)] = ns_GetSegmentData(hFile, EntityID.Spike(e), i);
-                        spike.time = spike.time*1000; % Convert to ms
                     end
+                    spike.time = spike.time*1000; % Convert to ms
                     spike.electrodeid = ElectrodeID.Spike(e);
                     dataset.spike(e) = spike;
                 end
@@ -118,8 +118,8 @@ if(isrippledata)
                     digital = struct;
                     for i = 1:nsEntityInfo.ItemCount
                         [ns_RESULT, digital.time(i), digital.data(i), ~] = ns_GetEventData(hFile, EntityID.Digital(e), i);
-                        digital.time = digital.time*1000; % Convert to ms
                     end
+                    digital.time = digital.time*1000; % Convert to ms
                     digital.channel = Reason(e);
                     dataset.digital(e) = digital;
                 end
@@ -165,8 +165,11 @@ if(isvlabdata)
     end
     dataset.ex = yaml.ReadYaml(vlabfilepath);
 end
-dataset.source = datafilepath;
-dataset.sourceformat = 'Ripple';
+
+if ~isempty(dataset)
+    dataset.source = datafilepath;
+    dataset.sourceformat = 'Ripple';
+end
 disp('Reading Files:    Done.');
 %% Prepare all data
 if ~isempty(dataset)
