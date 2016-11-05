@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="254350220" file="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="1831241913" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
     <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
     <param.icons>
@@ -9,14 +9,14 @@
       <file>${PROJECT_ROOT}\DataExport_resources\icon_16.png</file>
     </param.icons>
     <param.version>1.0</param.version>
-    <param.authnamewatermark>Alex</param.authnamewatermark>
-    <param.email>fff008@gmail.com</param.email>
-    <param.company>Alex-Joyce</param.company>
+    <param.authnamewatermark>Li Alex Zhang and Contributors</param.authnamewatermark>
+    <param.email />
+    <param.company>VLAB</param.company>
     <param.summary>Export VLab and Signal Data as Matlab MAT File</param.summary>
     <param.description />
     <param.screenshot>${PROJECT_ROOT}\noun_dataexport_cc.png</param.screenshot>
     <param.guid />
-    <param.installpath.string>\Alex-Joyce\DataExport\</param.installpath.string>
+    <param.installpath.string>\VLAB\DataExport\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
     <param.logo />
     <param.install.notes />
@@ -30,20 +30,17 @@
     <param.embed.ctf>true</param.embed.ctf>
     <param.target.type>subtarget.standalone</param.target.type>
     <param.support.packages />
-    <param.web.mcr>false</param.web.mcr>
-    <param.package.mcr>true</param.package.mcr>
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
     <param.no.mcr>false</param.no.mcr>
-    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
+    <param.web.mcr.name>DataExport_Installer_web</param.web.mcr.name>
     <param.package.mcr.name>DataExport_Installer_mcr</param.package.mcr.name>
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
     <param.windows.command.prompt>true</param.windows.command.prompt>
     <param.create.log>true</param.create.log>
-    <param.log.file>DataExportLog.txt</param.log.file>
+    <param.log.file>DataExport_Log.txt</param.log.file>
     <unset>
       <param.version />
-      <param.authnamewatermark />
-      <param.email />
-      <param.company />
       <param.description />
       <param.guid />
       <param.installpath.string />
@@ -59,8 +56,9 @@
       <param.embed.ctf />
       <param.target.type />
       <param.support.packages />
+      <param.web.mcr />
+      <param.package.mcr />
       <param.no.mcr />
-      <param.web.mcr.name />
       <param.no.mcr.name />
       <param.windows.command.prompt />
     </unset>
@@ -68,15 +66,15 @@
       <file>${PROJECT_ROOT}\DataExport.mlapp</file>
     </fileset.main>
     <fileset.resources>
-      <file>C:\Users\fff00\NeuroAnalysis\v1.0\+NeuroAnalysis</file>
-      <file>C:\Users\fff00\NeuroAnalysis\v1.0\+yaml</file>
+      <file>C:\Users\fff00\NeuroAnalysis\+NeuroAnalysis</file>
+      <file>C:\Users\fff00\NeuroAnalysis\+yaml</file>
     </fileset.resources>
     <fileset.package />
     <fileset.depfun />
     <build-deliverables>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="DataExport.exe" optional="false">C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport\for_testing\DataExport.exe</file>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport\for_testing\splash.png</file>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\fff00\NeuroAnalysis\v1.0\DataExport\DataExport\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\splash.png</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="DataExport.exe" optional="false">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\DataExport.exe</file>
     </build-deliverables>
     <workflow />
     <matlab>
