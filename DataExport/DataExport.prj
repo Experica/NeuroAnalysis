@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="1831241913" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="144409422" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
     <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
     <param.icons>
@@ -41,6 +41,7 @@
     <param.log.file>DataExport_Log.txt</param.log.file>
     <unset>
       <param.version />
+      <param.email />
       <param.description />
       <param.guid />
       <param.installpath.string />
@@ -78,7 +79,7 @@
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2016a</root>
+      <root>C:\Program Files\MATLAB\R2016b</root>
       <toolboxes>
         <toolbox name="fixedpoint" />
         <toolbox name="matlabcoder" />

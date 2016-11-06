@@ -81,7 +81,7 @@ function [ns_RESULT, hFile] = ns_OpenFile(varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ns_RESULT = [];
 hFile = [];
-ext = '.n**';
+ext = '.n*';
 % Checking input arguments for determining which file to load. 
 
 % If there there are no input arguments OR there is one input argument and 
