@@ -81,6 +81,11 @@ function [ns_RESULT, hFile] = ns_OpenFile(varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ns_RESULT = [];
 hFile = [];
+
+% IJM 161028: Fixed for Matlab R2016b as reported by Matt Krause. Two '*'
+% no longer work as wildcards. However, a single '*' works for multiple in
+% the current and previous Matlab versions, so this change is backwards
+% compatible. Tested on R2015a.  
 ext = '.n*';
 % Checking input arguments for determining which file to load. 
 

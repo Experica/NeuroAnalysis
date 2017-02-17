@@ -10,7 +10,7 @@ function [ns_RESULT, ContCount, Data] =...
 % Returns the data values associated with the Analog Entity indexed
 % EntityID in the file referenced by hFile. The index of the first data
 % value is StartIndex and the requested number of data samples is given by
-% IndexCount. The requested data values are returned in the variable Data.
+% IndexCount. The requested data values are rFileIDeturned in the variable Data.
 % Although the samples in an analog entity are indexed, they are guaranteed
 % to be continuous in time and may contain gaps between some of the indexes
 % When the requested data is returned, ContCount contains the number of
