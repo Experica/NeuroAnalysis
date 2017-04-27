@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="144409422" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="263413186" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
     <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
     <param.icons>
@@ -71,7 +71,9 @@
       <file>C:\Users\fff00\NeuroAnalysis\+yaml</file>
     </fileset.resources>
     <fileset.package />
-    <fileset.depfun />
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}\noun_refresh_cc.png</file>
+    </fileset.depfun>
     <build-deliverables>
       <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\readme.txt</file>
       <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\splash.png</file>
