@@ -15,6 +15,12 @@ analogrange = p.Results.analogrange;
 
 import NeuroAnalysis.Ripple.*
 %% Prepare all data files
+dataset = struct([]);
+[hfile] = fopen(filepath,'r');
+if hfile == -1
+    warn(['Can not open file: ',filepath]);
+    return;
+end
 [basepath,filename,ext] = fileparts(filepath);
 
 isrippledata= false;
@@ -29,10 +35,8 @@ vlabfilepath =fullfile(basepath,[filename '.yaml']);
 if(exist(vlabfilepath,'file')==2)
     isvlabdata = true;
 end
-%% Read all data
-dataset = struct([]);
-disp(['Reading Files:    ',datafilepath,'.*    ...']);
-
+%% Read Ripple data
+disp(['Reading Ripple Files:    ',datafilepath,'.*    ...']);
 if(isrippledata)
     [ns_RESULT, nsFileInfo] = ns_GetFileInfo(hFile);
     if(~strcmp(ns_RESULT,'ns_OK'))
@@ -159,25 +163,20 @@ if(isrippledata)
     end
 end
 
-if(isvlabdata)
-    if(isempty(dataset))
-        dataset = struct;
-    end
-    dataset.ex = yaml.ReadYaml(vlabfilepath);
-end
-
 if ~isempty(dataset)
     dataset.source = datafilepath;
     dataset.sourceformat = 'Ripple';
 end
-disp('Reading Files:    Done.');
-%% Prepare all data
-if ~isempty(dataset)
-    disp(['Preparing Dataset:    ',datafilepath,'.*    ...']);
-    if(isvlabdata)
-        dataset.ex = NeuroAnalysis.VLab.Prepare(dataset.ex);
-    end
-    disp('Preparing Dataset:    Done.');
-end
 ns_RESULT = ns_CloseFile(hFile);
+disp('Reading Ripple Files:    Done.');
+%% Prepare Ripple data
+
+%% Prepare VLab data
+if(isvlabdata && ~isempty(dataset))
+    vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath);
+    if ~isempty(vlabdataset)
+        dataset.ex = vlabdataset.ex;
+    end
+end
+
 end

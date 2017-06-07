@@ -25,7 +25,7 @@ else
         fun = funlist{i};
         argin = vararginlist{i};
         disp(['Apply Function:    ',fun,'    ===========================================>']);
-        eval(['results{i}=',fun,'(',NeuroAnalysis.Base.Varargin2Literal('argin',length(argin)),');']);
+        results{i} = NeuroAnalysis.Base.EvalFun(fun,argin);
     end
 end
 
