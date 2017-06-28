@@ -1,11 +1,11 @@
-function [ result ] = Export(dataset, exportpath,sourceformat,isparallel,varargin )
+function [ result ] = Export(dataset, exportpath,sourceformat,isparallel,doplotting,varargin )
 %EXPORT Export prepared dataset in Matlab MAT format file
 %   Detailed explanation goes here
 
 %% Batch export
 if isa(dataset,'cell')
     funlist=repelem({'NeuroAnalysis.IO.Export'},length(dataset));
-    vararginlist = arrayfun(@(i)[i,{exportpath,sourceformat,isparallel},varargin],dataset,'UniformOutput',false);
+    vararginlist = arrayfun(@(i)[i,{exportpath,sourceformat,isparallel,doplotting},varargin],dataset,'UniformOutput',false);
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     return;
 end
@@ -32,5 +32,8 @@ end
 result.status = true;
 result.source = filename;
 disp('Exporting Dataset:    Done.');
+%% Plotting
+if doplotting
+    NeuroAnalysis.Base.PlotData(exportpath, filename, sourceformat, dataset);
 end
 
