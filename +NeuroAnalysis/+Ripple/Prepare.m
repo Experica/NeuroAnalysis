@@ -50,6 +50,7 @@ if(isrippledata)
         return;
     end
     
+    EntityID = struct;
     EntityFileType = arrayfun(@(e)e.FileType,hFile.Entity);
     EntityType = arrayfun(@(e)e.EntityType,hFile.Entity,'Uniformoutput',false);
     EntityReason = arrayfun(@(e)e.Reason,hFile.Entity,'Uniformoutput',false);
