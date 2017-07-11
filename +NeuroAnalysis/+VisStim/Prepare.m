@@ -18,16 +18,15 @@ disp(['Reading VisStim File:    ',filepath,'    ...']);
 fileVars = who('-file', filepath);
 if ismember('Params',fileVars)
     load(filepath, 'Params')
-    if isfield(Params, 'Data')
+    if isfield(Params, 'Data') && ~isempty(Params.Data)
         dataset.ex = Params;
     end
 end
-if isempty(fieldnames(dataset))
-    dataset.ex = struct;
+if isempty(fieldnames(dataset)) % convert old data
     [datapath, filename, ~] = fileparts(filepath);
-    dataset.ex.Params = convertLogMat( datapath, filename );
+    dataset.ex = convertLogFile( datapath, filename );
 end
-if ~isempty(dataset)
+if ~isempty(fieldnames(dataset))
     dataset.source = filepath;
     dataset.sourceformat = 'VisStim';
 end
