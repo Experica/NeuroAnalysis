@@ -1,0 +1,73 @@
+<deployment-project plugin="plugin.apptool" plugin-version="1.0">
+  <configuration file="C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\DataExport\DataExport_1.prj" location="C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\DataExport" name="DataExport_1" target="target.mlapps" target-name="Package App">
+    <param.appname>DataExport_1</param.appname>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
+    <param.icon />
+    <param.icons />
+    <param.summary />
+    <param.description />
+    <param.screenshot />
+    <param.version>1.0</param.version>
+    <param.products.name />
+    <param.products.id />
+    <param.products.version />
+    <param.platforms />
+    <param.output>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\DataExport</param.output>
+    <param.guid>dc25c901-f941-4f27-a73d-bc6ff063580d</param.guid>
+    <unset>
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.icon />
+      <param.icons />
+      <param.summary />
+      <param.description />
+      <param.screenshot />
+      <param.version />
+      <param.products.name />
+      <param.products.id />
+      <param.products.version />
+      <param.platforms />
+      <param.output />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}\DataExport.mlapp</file>
+    </fileset.main>
+    <fileset.depfun>
+      <file>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\+NeuroAnalysis\+Base\dirfile.m</file>
+      <file>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\+NeuroAnalysis\+Base\EvalFun.m</file>
+      <file>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\+NeuroAnalysis\+Base\filenamenodirext.m</file>
+      <file>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\+NeuroAnalysis\+Base\LoadVar.m</file>
+      <file>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\+NeuroAnalysis\+Base\SaveVar.m</file>
+      <file>C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\+NeuroAnalysis\+Base\Varargin2Literal.m</file>
+      <file>${PROJECT_ROOT}\noun_refresh_cc.png</file>
+    </fileset.depfun>
+    <fileset.resources />
+    <fileset.package />
+    <build-deliverables>
+      <file location="C:\Users\leo\Google Drive\Matlab\NeuroAnalysis" name="DataExport" optional="false">C:\Users\leo\Google Drive\Matlab\NeuroAnalysis\DataExport</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2017a</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>6.1</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
