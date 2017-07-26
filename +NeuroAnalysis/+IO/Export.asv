@@ -36,8 +36,8 @@ result.source = filename;
 disp('Exporting Dataset:    Done.');
 %% Callback
 callbackfun = callback{1};
-callbackarg = callback{2};
-if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
+callbackarg = eval(['{',callback{2},'}']);
+if ~isempty(callbackfun)
     disp(['Applying callback:    ',exportpath,'    ...']);
     NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
     disp('Applying callback:    Done.');
