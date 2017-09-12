@@ -74,16 +74,20 @@ if(isrippledata)
                     entityid = find(EntityFileType==i);
                     electrodeid = EntityElectrodeID(entityid);
                     vch = ismember(electrodeid,electroderange);
-                    EntityID.LFP = entityid(vch);
-                    ElectrodeID.LFP = electrodeid(vch);
+                    if any(vch)
+                        EntityID.LFP = entityid(vch);
+                        ElectrodeID.LFP = electrodeid(vch);
+                    end
                     ns2TimeStamps = hFile.FileInfo(i).TimeStamps;
                 end
                 if ismember('Analog1k',datatype)
                     entityid = find(EntityFileType==i);
                     electrodeid = EntityElectrodeID(entityid);
                     vch = ismember(electrodeid,analogrange);
-                    EntityID.Analog1k = entityid(vch);
-                    ElectrodeID.Analog1k = electrodeid(vch);
+                    if any(vch)
+                        EntityID.Analog1k = entityid(vch);
+                        ElectrodeID.Analog1k = electrodeid(vch);
+                    end
                     ns2TimeStamps = hFile.FileInfo(i).TimeStamps;
                 end
             case 'ns5'
@@ -91,8 +95,10 @@ if(isrippledata)
                     entityid = find(EntityFileType==i);
                     electrodeid = EntityElectrodeID(entityid);
                     vch = ismember(electrodeid,electroderange);
-                    EntityID.Raw = entityid(vch);
-                    ElectrodeID.Raw = electrodeid(vch);
+                    if any(vch)
+                        EntityID.Raw = entityid(vch);
+                        ElectrodeID.Raw = electrodeid(vch);
+                    end
                     ns5TimeStamps = hFile.FileInfo(i).TimeStamps;
                 end
                 if ismember('Analog30k',datatype)
