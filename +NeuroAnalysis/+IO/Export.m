@@ -32,15 +32,13 @@ else
 end
 result.status = true;
 result.source = filename;
-
 disp('Exporting Dataset:    Done.');
 %% Callback
 callbackfun = callback{1};
 callbackarg = callback{2};
 if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
-    disp(['Applying callback:    ',exportpath,'    ...']);
+    disp(['Applying Callback:    ',callfackfun,'    ...']);
     NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
-    disp('Applying callback:    Done.');
-
+    disp('Applying Callback:    Done.');
 end
 
