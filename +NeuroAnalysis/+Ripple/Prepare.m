@@ -62,8 +62,10 @@ if(isrippledata)
                     entityid = find(EntityFileType==i);
                     electrodeid = EntityElectrodeID(entityid);
                     vch = ismember(electrodeid,electroderange);
-                    EntityID.Spike = entityid(vch);
-                    ElectrodeID.Spike = electrodeid(vch);
+                    if any(vch)
+                        EntityID.Spike = entityid(vch);
+                        ElectrodeID.Spike = electrodeid(vch);
+                    end
                 end
                 if ismember('Digital',datatype)
                     EntityID.Digital = find((EntityFileType==i)&(cellfun( @(x)strcmp(x,'Event'),EntityType)));
@@ -178,6 +180,7 @@ end
 
 if ~isempty(dataset)
     dataset.source = datafilepath;
+    dataset.secondperunit = 1; % time unit is second
     dataset.sourceformat = 'Ripple';
 end
 ns_RESULT = ns_CloseFile(hFile);
