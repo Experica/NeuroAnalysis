@@ -14,6 +14,9 @@ if funn~=argn
 end
 
 if isparallel
+    if isempty(gcp('nocreate'))
+        parpool; % start the parallel pool
+    end
     parfor i=1:funn
         fun = funlist{i};
         argin = vararginlist{i};

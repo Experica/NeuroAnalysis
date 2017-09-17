@@ -10,7 +10,7 @@ filepath = p.Results.filepath;
 dataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    warn(['Can not open file: ',filepath]);
+    warning(['Can not open file: ',filepath]);
     return;
 end
 dataset = struct;
