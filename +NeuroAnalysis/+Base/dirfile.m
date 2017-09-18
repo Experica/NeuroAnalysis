@@ -1,5 +1,5 @@
-function [ filedir,filename ] = dirfile( rootdir,nametemplate,sortmethod )
-%DIRFILE Get file directory and name under a root directory
+function [ filedir,filename,filedate ] = dirfile( rootdir,nametemplate,sortmethod )
+%DIRFILE Get file directory, name and date under a root directory
 %   Detailed explanation goes here
 
 if nargin==2
@@ -17,6 +17,7 @@ fsdatenum = arrayfun(@(i)i.datenum,fs);
 
 filename = fsname(sorti);
 filedir = fsdir(sorti);
+filedate = fsdatenum(sorti);
 
 end
 
