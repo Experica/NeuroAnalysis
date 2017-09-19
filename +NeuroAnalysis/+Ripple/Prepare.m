@@ -4,11 +4,13 @@ function [ dataset ] = Prepare( filepath,varargin )
 
 p = inputParser;
 addRequired(p,'filepath');
+addOptional(p,'secondperunit',1);
 addOptional(p,'datatype',{'Spike','LFP','Hi-Res','Stim','Analog30k','Analog1k','Digital'}); %'Raw'
 addOptional(p,'electroderange',1:5120);
 addOptional(p,'analogrange',10241:10270);
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
+secondperunit = p.Results.secondperunit;
 datatype = p.Results.datatype;
 electroderange = p.Results.electroderange;
 analogrange = p.Results.analogrange;
@@ -128,6 +130,9 @@ if(isrippledata)
                     for i = 1:nsEntityInfo.ItemCount
                         [ns_RESULT, spike.time(i), spike.data(:,i), ~, spike.unitid(i)] = ns_GetSegmentData(hFile, EntityID.Spike(e), i);
                     end
+                    if secondperunit~=1
+                        spike.time = spike.time/secondperunit;
+                    end
                     spike.electrodeid = ElectrodeID.Spike(e);
                     dataset.spike(e) = spike;
                 end
@@ -138,6 +143,9 @@ if(isrippledata)
                     digital = struct;
                     for i = 1:nsEntityInfo.ItemCount
                         [ns_RESULT, digital.time(i), digital.data(i), ~] = ns_GetEventData(hFile, EntityID.Digital(e), i);
+                    end
+                    if secondperunit~=1
+                        digital.time = digital.time/secondperunit;
                     end
                     digital.channel = Reason(e);
                     dataset.digital(e) = digital;
@@ -150,6 +158,9 @@ if(isrippledata)
                 dataset.lfp.fs = nsAnalogInfo.SampleRate;
                 dataset.lfp.electrodeid = ElectrodeID.LFP;
                 dataset.lfp.time = (ns2TimeStamps/nsAnalogInfo.SampleRate);
+                if secondperunit~=1
+                    dataset.lfp.time = dataset.lfp.time/secondperunit;
+                end
             case 'Analog1k'
                 [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.Analog1k, 1, ns2TimeStamps(end)-ns2TimeStamps(1));
                 [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.Analog1k(1));
@@ -158,6 +169,9 @@ if(isrippledata)
                 dataset.analog1k.fs = nsAnalogInfo.SampleRate;
                 dataset.analog1k.electrodeid = ElectrodeID.Analog1k;
                 dataset.analog1k.time = (ns2TimeStamps/nsAnalogInfo.SampleRate);
+                if secondperunit~=1
+                    dataset.analog1k.time = dataset.analog1k.time/secondperunit;
+                end
             case 'Raw'
                 [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.Raw, 1, ns5TimeStamps(end)-ns5TimeStamps(1));
                 [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.Raw(1));
@@ -166,6 +180,9 @@ if(isrippledata)
                 dataset.raw.fs = nsAnalogInfo.SampleRate;
                 dataset.raw.electrodeid = ElectrodeID.Raw;
                 dataset.raw.time = (ns5TimeStamps/nsAnalogInfo.SampleRate);
+                if secondperunit~=1
+                    dataset.raw.time = dataset.raw.time/secondperunit;
+                end
             case 'Analog30k'
                 [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.Analog30k, 1, ns5TimeStamps(end)-ns5TimeStamps(1));
                 [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.Analog30k(1));
@@ -174,13 +191,16 @@ if(isrippledata)
                 dataset.analog30k.fs = nsAnalogInfo.SampleRate;
                 dataset.analog30k.electrodeid = ElectrodeID.Analog30k;
                 dataset.analog30k.time = (ns5TimeStamps/nsAnalogInfo.SampleRate);
+                if secondperunit~=1
+                    dataset.analog30k.time = dataset.analog30k.time/secondperunit;
+                end
         end
     end
 end
 
 if ~isempty(dataset)
     dataset.source = datafilepath;
-    dataset.secondperunit = 1; % time unit is second
+    dataset.secondperunit = secondperunit;
     dataset.sourceformat = 'Ripple';
 end
 ns_RESULT = ns_CloseFile(hFile);

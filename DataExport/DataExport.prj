@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="1005408364" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="861844049" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
     <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
     <param.icons>
