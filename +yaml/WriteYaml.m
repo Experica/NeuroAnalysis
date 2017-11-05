@@ -12,7 +12,7 @@ if ~exist('flowstyle','var')
         import('org.yaml.snakeyaml.*');
         javaObject('Yaml');
     catch
-        dp = [pth filesep 'external' filesep 'snakeyaml-1.9.jar'];
+        dp = [pth filesep 'external' filesep 'snakeyaml-1.19.jar'];
         if not(ismember(dp, javaclasspath ('-dynamic')))
         	javaaddpath(dp); % javaaddpath clears global variables!?
         end
