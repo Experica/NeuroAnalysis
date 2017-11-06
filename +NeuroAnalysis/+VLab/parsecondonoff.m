@@ -29,7 +29,7 @@ for i=1:nct
         elseif iscondstate
             tss = vlabtimetodatatime(ex,findstatetime(ex.CondTest.CONDSTATE{i},'COND'),true);
             tes = vlabtimetodatatime(ex,findstatetime(ex.CondTest.CONDSTATE{i},'SUFICI'),true);
-            isfound,ts,te=trysearchmarktime(tss,tes,dintime,dinvalue,msr);
+            [isfound,ts,te]=trysearchmarktime(tss,tes,dintime,dinvalue,msr);
             if isfound
                 on=[on,ts];
                 off=[off,te];
