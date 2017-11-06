@@ -8,6 +8,9 @@ for i=1:length(stateevents)
         t = [t,stateevents{i}.(state)];
     end
 end
+if isempty(t)
+    t=NaN;
+end
 
 end
 
