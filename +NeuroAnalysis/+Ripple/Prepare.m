@@ -20,8 +20,7 @@ import NeuroAnalysis.Ripple.*
 dataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    warn(['Can not open file: ',filepath]);
-    return;
+    error(['Can not open file: ',filepath]);
 end
 [basepath,filename,ext] = fileparts(filepath);
 

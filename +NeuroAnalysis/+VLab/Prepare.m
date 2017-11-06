@@ -14,8 +14,7 @@ dataset = p.Results.dataset;
 vlabdataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    warning(['Can not open file: ',filepath]);
-    return;
+    error(['Can not open file: ',filepath]);
 end
 vlabdataset = struct;
 %% Read data

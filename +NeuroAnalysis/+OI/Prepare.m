@@ -12,8 +12,7 @@ progress = p.Results.progress;
 dataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    warn(['Can not open file: ',filepath]);
-    return;
+    error(['Can not open file: ',filepath]);
 end
 disp(['Reading OI Block File:    ',filepath,'    ...']);
 dataset=struct;
@@ -146,7 +145,7 @@ if ~isempty(dataset)
     dataset.sourceformat = 'OI';
 end
 if (ftell(hfile)~=dataset.imagehead.filesize)
-    warn('Block Is Not Completely Read Out.');
+    warning('Block Is Not Completely Read Out.');
 end
 fclose(hfile);
 disp('Reading File:    Done.');

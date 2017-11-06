@@ -9,8 +9,7 @@ filepath = p.Results.filepath;
 %% check file
 dataset = struct([]);
 if ~exist(filepath, 'file') || isempty(whos('-file', filepath))
-    warn(['Can not open file: ',filepath]);
-    return;
+    error(['Can not open file: ',filepath]);
 end
 dataset = struct;
 %% Read data
