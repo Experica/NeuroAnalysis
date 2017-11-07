@@ -8,21 +8,17 @@ parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 %% check file
 dataset = struct([]);
-if ~exist(filepath, 'file') || isempty(whos('-file', filepath))
+if ~exist(filepath, 'file')
     warn(['Can not open file: ',filepath]);
     return;
 end
 dataset = struct;
 %% Read data
 disp(['Reading VisStim File:    ',filepath,'    ...']);
-fileVars = who('-file', filepath);
-if ismember('Params',fileVars)
-    load(filepath, 'Params')
-    if isfield(Params, 'Data') && ~isempty(Params.Data)
-        dataset.ex = Params;
-    end
-end
-if isempty(fieldnames(dataset)) % convert old data
+all = load(filepath, '-regexp', '^(?!handles)\w');
+if isfield('Params',all) && isfield(all.Params, 'Data') && ~isempty(all.Params.Data)
+    dataset.ex = all.Params;
+else % convert old data
     [datapath, filename, ~] = fileparts(filepath);
     dataset.ex = convertLogFile( datapath, filename );
 end
