@@ -7,7 +7,9 @@ try
     eval(['result=',fun,'(',args,');']);
 catch ME
     warning([ME.identifier,': ',ME.message]);
-    ME.stack(1);
+    for i=1:length(ME.stack)
+        ME.stack(i);
+    end
     result.status = false;
     result.fun = fun;
     result.args = args;

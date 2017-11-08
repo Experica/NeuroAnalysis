@@ -218,7 +218,10 @@ disp(['Preparing Ripple Files:    ',datafilepath,'.*    ...']);
                 y=3;
             case 'SMA 4'
                 y=4;
+            otherwise
+                y=5;
         end
+        y=uint16(y);
     end
 
 if ~isempty(dataset)

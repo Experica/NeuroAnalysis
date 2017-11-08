@@ -10,8 +10,8 @@ for i=1:length(ctnames)
     ex.CondTest.(ctnames{i}) = ex.CondTest.(ctnames{i})(1:nct);
 end
 % Convert CondIndex to 1-base
-ex.CondTest.CondIndex =cellfun(@(x)x+1, ex.CondTest.CondIndex);
-ex.CondTest.CondRepeat = cellfun(@(x)x, ex.CondTest.CondRepeat);
+ex.CondTest.CondIndex =cellfun(@(x)int32(x+1), ex.CondTest.CondIndex);
+ex.CondTest.CondRepeat = cellfun(@(x)int32(x), ex.CondTest.CondRepeat);
 % Try parse Environment Parameter
 if ~isempty(ex.EnvParam)
     envparamnames = fieldnames(ex.EnvParam);
