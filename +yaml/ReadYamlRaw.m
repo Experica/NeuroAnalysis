@@ -20,8 +20,8 @@ if ~exist('verbose','var')
         import('org.yaml.snakeyaml.*');
         javaObject('Yaml');
     catch
-        dp = [pth filesep 'external' filesep 'snakeyaml-1.9.jar'];
-        if not(ismember(dp, javaclasspath ('-dynamic')))
+        dp = [pth filesep 'external' filesep 'snakeyaml-1.19.jar'];
+        if not(ismember(dp, javaclasspath ('-all')))
         	javaaddpath(dp); % javaaddpath clears global variables!?
         end
         import('org.yaml.snakeyaml.*');

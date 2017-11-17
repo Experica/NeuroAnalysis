@@ -8,9 +8,8 @@ parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 %% check file
 dataset = struct([]);
-if ~exist(filepath, 'file')
-    warn(['Can not open file: ',filepath]);
-    return;
+if ~exist(filepath, 'file') || isempty(whos('-file', filepath))
+    error(['Can not open file: ',filepath]);
 end
 dataset = struct;
 %% Read data

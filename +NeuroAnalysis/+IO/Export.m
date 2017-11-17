@@ -13,8 +13,12 @@ end
 result.status = false;
 result.source = '';
 if isa(dataset,'char')
+    result.source = dataset;
     if ~strcmp(sourceformat,'Unknown')
         dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],[{dataset},varargin]);
+        if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
+            return;
+        end
         filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
         exportpath = fullfile(exportpath,[filename,'.mat']);
     else

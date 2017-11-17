@@ -20,8 +20,7 @@ import NeuroAnalysis.Ripple.*
 dataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    warning(['Can not open file: ',filepath]);
-    return;
+    error(['Can not open file: ',filepath]);
 end
 [basepath,filename,ext] = fileparts(filepath);
 
@@ -206,10 +205,41 @@ end
 ns_RESULT = ns_CloseFile(hFile);
 disp('Reading Ripple Files:    Done.');
 %% Prepare Ripple data
+disp(['Preparing Ripple Files:    ',datafilepath,'.*    ...']);
+    function y = dinch(x)
+        switch x
+            case 'Parallel'
+                y=0;
+            case 'SMA 1'
+                y=1;
+            case 'SMA 2'
+                y=2;
+            case 'SMA 3'
+                y=3;
+            case 'SMA 4'
+                y=4;
+            otherwise
+                y=5;
+        end
+        y=uint16(y);
+    end
 
+if ~isempty(dataset)
+    if isfield(dataset,'spike')
+        for i=1:length(dataset.spike)
+            dataset.spike(i).uuid = sort(unique(dataset.spike(i).unitid));
+        end
+    end
+    if isfield(dataset,'digital')
+        for i=1:length(dataset.digital)
+            dataset.digital(i).channel = dinch(dataset.digital(i).channel{:});
+        end
+    end
+end
+disp('Preparing Ripple Files:    Done.');
 %% Prepare experimental data
 if(isvlabdata && ~isempty(dataset))
-    vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath);
+    vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath,dataset);
     if ~isempty(vlabdataset)
         dataset.ex = vlabdataset.ex;
     end
