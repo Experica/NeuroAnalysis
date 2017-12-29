@@ -10,39 +10,43 @@ if isa(dataset,'cell')
     return;
 end
 %% Get dataset and export path
-result.status = false;
-result.source = '';
 if isa(dataset,'char')
-    result.source = dataset;
+    filename = dataset;
     if ~strcmp(sourceformat,'Unknown')
         dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],[{dataset},varargin]);
         if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
+            result = dataset;
+            result.source = NeuroAnalysis.Base.filenamenodirext(filename);
             return;
         end
         filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
-        exportpath = fullfile(exportpath,[filename,'.mat']);
+        filepath = fullfile(exportpath,[filename,'.mat']);
     else
         [~,filename,ext]=fileparts(dataset);
-        exportpath=fullfile(exportpath,[filename,ext]);
+        filepath=fullfile(exportpath,[filename,ext]);
     end
 end
 %% Save dataset
-disp(['Exporting Dataset:    ',exportpath,'    ...']);
+disp(['Exporting Dataset:    ',filepath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
-    dataset.filepath = exportpath;
-    save(exportpath,'dataset','-v7.3');
+    dataset.filepath = filepath;
+    save(filepath,'dataset','-v7.3');
 else
-    copyfile(dataset,exportpath);
+    copyfile(dataset,filepath);
+    dataset = struct;
+    dataset.filepath = filepath;
 end
-result.status = true;
-result.source = filename;
 disp('Exporting Dataset:    Done.');
 %% Callback
 callbackfun = callback{1};
 callbackarg = callback{2};
+callbackresult = struct([]);
 if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
     disp(['Applying Callback:    ',callbackfun,'    ...']);
-    NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
+    callbackresult = NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
     disp('Applying Callback:    Done.');
 end
-
+%% Update metadata file
+result = NeuroAnalysis.Base.EvalFun('NeuroAnalysis.IO.MetadataExtract', {dataset,exportpath,sourceformat,isparallel,callbackresult});
+result.status = true;
+result.source = dataset.filepath;

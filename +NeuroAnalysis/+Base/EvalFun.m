@@ -12,7 +12,7 @@ catch ME
     end
     result.status = false;
     result.fun = fun;
-    result.args = args;
+    result.args = eval(['{',args,'}']);
 end
 
 end
