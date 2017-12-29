@@ -23,7 +23,7 @@ vlabdataset.ex = yaml.ReadYaml(filepath);
 disp('Reading VLab File:    Done.');
 %% Prepare data
 disp(['Preparing VLab File:    ',filepath,'    ...']);
-if ~isempty(vlabdataset)
+if ~isempty(vlabdataset.ex)
     vlabdataset.ex.t0=0;
     if ~isempty(dataset)
         if isfield(dataset,'digital')

@@ -244,7 +244,7 @@ if(isvlabdata && ~isempty(dataset))
         dataset.ex = vlabdataset.ex;
     end
 elseif(isvisstimdata && ~isempty(dataset))
-    visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath);
+    visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,dataset);
     if ~isempty(visstimdataset)
         dataset.ex = visstimdataset.ex;
     end
