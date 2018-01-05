@@ -10,13 +10,13 @@ if isa(dataset,'cell')
     return;
 end
 %% Get dataset and export path
+result.status = false;
+result.source = '';
 if isa(dataset,'char')
-    filename = dataset;
+    result.source = dataset;
     if ~strcmp(sourceformat,'Unknown')
         dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],[{dataset},varargin]);
         if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
-            result = dataset;
-            result.source = NeuroAnalysis.Base.filenamenodirext(filename);
             return;
         end
         filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
@@ -25,6 +25,8 @@ if isa(dataset,'char')
         [~,filename,ext]=fileparts(dataset);
         filepath=fullfile(exportpath,[filename,ext]);
     end
+else
+    result.source = dataset.filepath;
 end
 %% Save dataset
 disp(['Exporting Dataset:    ',filepath,'    ...']);
@@ -33,8 +35,6 @@ if ~strcmp(sourceformat,'Unknown')
     save(filepath,'dataset','-v7.3');
 else
     copyfile(dataset,filepath);
-    dataset = struct;
-    dataset.filepath = filepath;
 end
 disp('Exporting Dataset:    Done.');
 %% Callback
@@ -47,6 +47,13 @@ if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
     disp('Applying Callback:    Done.');
 end
 %% Update metadata file
-result = NeuroAnalysis.Base.EvalFun('NeuroAnalysis.IO.MetadataExtract', {dataset,exportpath,sourceformat,isparallel,callbackresult});
+result.meta = struct([]);
+if ~strcmp(sourceformat,'Unknown')
+    metaresult = NeuroAnalysis.Base.EvalFun( ...
+        ['NeuroAnalysis.',sourceformat,'.MetadataPrepare'], ...
+        {dataset,callbackresult});
+    if metaresult.status
+        result.meta = metaresult.meta;
+    end
+end
 result.status = true;
-result.source = dataset.filepath;

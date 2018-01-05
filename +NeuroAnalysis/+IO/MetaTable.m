@@ -4,11 +4,6 @@ classdef MetaTable < handle
     
     properties (Access = private)
         Tests       % Structure of metadata
-        map         % key-value map of filenames to indices
-    end
-    
-    properties (Access = public)
-       filepath     % where the metadata file should be stored
     end
     
     methods (Access = public)
@@ -17,86 +12,102 @@ classdef MetaTable < handle
             %METATABLE Create a MetaTable object from the given path
             % If the path does not point to a file, then an empty object
             % will be created
-            obj.filepath = filepath;
-            if exist(obj.filepath, 'file')
-                metafile = load(obj.filepath);
+            if exist(filepath, 'file')
+                metafile = load(filepath);
                 obj.Tests = metafile.Tests;
-                obj.map = metafile.map;
             else
-                obj.Tests = struct;
-                obj.Tests.files = {};
-                obj.map = containers.Map('KeyType', 'char', 'ValueType', 'double');
+                obj.Tests = struct([]);
             end
         end
         
-        function addEntry(obj, test)
-            %ADDENTRY Add a test structure with any name value pair fields
-
-            % Search for test in existing table
-            fields = setdiff(fieldnames(obj.Tests), fieldnames(test));
-            if obj.map.isKey(test.filepath)
-                idx = obj.map(test.filepath);
-                % Copy any columns that aren't present in this test
-                for f=1:length(fields)
-                    test.(fields{f}) = obj.Tests.(fields{f})(idx);
-                end
-            else
-                idx = length(obj.map) + 1;
-                % Fill in any columns that aren't present in this test
-                for f=1:length(fields)
-                    test.(fields{f}) = missing;
-                end
+        function addEntries(obj, tests, deleteMissing)
+            %ADDENTRIES Add multiple tests
+            % if deleteMissing is true, then any tests not supplied in the
+            % input will be removed
+            oldIdx = length(obj.Tests);
+            for t = 1:length(tests)
+                [obj.Tests, merged] = obj.merge(obj.Tests, tests{t});
+                oldIdx = oldIdx - merged;
             end
-            obj.map(test.filepath) = idx;            
-            
-            % Change characters to strings
-            fields = fieldnames(test);
-            for f=1:length(fields)
-                if ischar(test.(fields{f}))
-                    test.(fields{f}) = string(test.(fields{f}));
-                end
+            if deleteMissing
+                obj.Tests = obj.Tests(oldIdx+1:end);
             end
-
-            % Add the new test
-            if length(obj.Tests.files) < idx || isempty(obj.Tests.files(idx))
-                obj.Tests.files{idx} = test.filepath;
-            else
-                obj.Tests.files{idx} = union(obj.Tests.files{idx}, test.filepath);
-            end
-            test = rmfield(test, {'filepath', 'files'});
-            fields = fieldnames(test);
-            for f=1:length(fields)
-                obj.Tests.(fields{f})(idx) = test.(fields{f});
-            end
-
         end
         
         function Tests = query(obj, varargin)
             %QUERY Find matching tests
             nargs = length(varargin);
-            if round(nargs/2)~=nargs/2
-               error('Query needs propertyName/propertyValue pairs')
+            if nargs == 0 || mod(nargs, 2) == 1
+               error('inputs should be name,value pairs, e.g. query(MetaTable, ''Subject_ID'', ''R1701'')')
             end
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
-            isMatch = ones(1,length(obj.map));
-            for kv = 1:length(keys)
-                isMatch = isMatch & ismember(obj.getfieldi(obj.Tests,keys{kv}), values{kv});
+            isMatch = true(length(obj.Tests),1);
+            for t = 1:length(obj.Tests)
+                for kv = 1:length(keys)
+                    isMatch(t) = isMatch(t) && isequal(obj.Tests(t).(keys{kv}), values{kv});
+                end
             end
-            Tests = structfun(@(x)x(isMatch), obj.Tests, 'UniformOutput', false);
+            Tests = obj.Tests(isMatch);
         end
         
-        function export(obj)
+        function Tests = list(obj)
+            %LIST list all the tests
+            Tests = obj.Tests;
+        end
+        
+        function export(obj, filepath)
             %EXPORT save to disk
-            disp(['Saving metadata:    ',obj.filepath,'    ...']);
+            disp(['Saving metadata:    ',filepath,'    ...']);
             metafile.Tests = obj.Tests;
-            metafile.map = obj.map;
-            save(obj.filepath, '-struct', 'metafile', '-v7.3');
+            fields = fieldnames(obj.Tests);
+            for f=1:length(fields)
+                metafile.TestsScalar.(fields{f}) = {obj.Tests.(fields{f})};
+            end
+            save(filepath, '-struct', 'metafile', '-v7.3');
             disp('Saving metadata:    Done.');
         end
     end
-    
+     
     methods (Static, Access = private)
+
+         function [Tests, merged] = merge(Tests, test)
+            %MERGE Merge a test to a structure of tests
+
+            % Add missing fields to this object's Tests structure
+            fields = setdiff(fieldnames(test), fieldnames(Tests));
+            emptyCell = cell(length(Tests),1);
+            for f = 1:length(fields)
+                if any(strcmpi(fields{f}, fieldnames(Tests)))
+                    error(['Fieldnames must be unique and case-insensitive (%s)',...
+                        fields{f}]);
+                end
+                [Tests.(fields{f})] = emptyCell{:};
+            end
+            
+            % Merge according to sourceformat if necessary
+            toMerge = false(length(Tests),1);
+            for t = 1:length(Tests)
+                toMerge(t) = isequal(Tests(t).(test.key), test.(test.key));
+            end
+            merged = sum(toMerge);
+            if merged
+                assert(merged == 1)
+                newTest = NeuroAnalysis.Base.EvalFun(...
+                    ['NeuroAnalysis.',test.sourceformat,'.MetadataMerge'],...
+                    {test, Tests(toMerge)});
+            else
+                newTest = test;
+            end
+            
+            % Add missing fields to the test
+            Tests = Tests(~toMerge);
+            fields = setdiff(fieldnames(Tests), fieldnames(newTest));
+            for f = 1:length(fields)
+                newTest.(fields{f}) = {};
+            end
+            Tests(end+1) = newTest;
+        end
         
         function value = getfieldi(S,field)
             %GETFIELDI case-insensitive dynamic structure field access
@@ -104,10 +115,10 @@ classdef MetaTable < handle
             isField = strcmpi(field,names);  
 
             if any(isField)
-                assert(sum(isField) == 1);
-                value = S.(names{isField});
+                assert(sum(isField) == 1)
+                value = {S.(names{isField})};
             else
-                value = [];
+                value = {};
             end
         end
         
