@@ -1,5 +1,5 @@
-function [merged] = MetadataMerge( test1, test2 )
-%METADATAMERGE Merge two tests' metadata
+function [merged] = MergeMetadata( test1, test2 )
+%MERGEMETADATA Merge two tests' metadata
 %   Detailed explanation goes here
 
 t1fields = fieldnames(test1);
