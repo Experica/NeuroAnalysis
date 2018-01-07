@@ -1,11 +1,11 @@
-function [ result ] = Export(dataset, exportpath,sourceformat,isparallel,callback,varargin )
+function [ result ] = Export(dataset, exportdir,sourceformat,isparallel,callback,varargin )
 %EXPORT Export prepared dataset in Matlab MAT format file
 %   Detailed explanation goes here
 
 %% Batch export
 if isa(dataset,'cell')
     funlist=repelem({'NeuroAnalysis.IO.Export'},length(dataset));
-    vararginlist = arrayfun(@(i)[i,{exportpath,sourceformat,isparallel,callback},varargin],dataset,'UniformOutput',false);
+    vararginlist = arrayfun(@(i)[i,{exportdir,sourceformat,isparallel,callback},varargin],dataset,'UniformOutput',false);
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     return;
 end
@@ -20,21 +20,19 @@ if isa(dataset,'char')
             return;
         end
         filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
-        filepath = fullfile(exportpath,[filename,'.mat']);
+        exportpath = fullfile(exportdir,[filename,'.mat']);
     else
         [~,filename,ext]=fileparts(dataset);
-        filepath=fullfile(exportpath,[filename,ext]);
+        exportpath=fullfile(exportdir,[filename,ext]);
     end
-else
-    result.source = dataset.filepath;
 end
 %% Save dataset
-disp(['Exporting Dataset:    ',filepath,'    ...']);
+disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
-    dataset.filepath = filepath;
-    save(filepath,'dataset','-v7.3');
+    dataset.filepath = exportpath;
+    save(exportpath,'dataset','-v7.3');
 else
-    copyfile(dataset,filepath);
+    copyfile(dataset,exportpath);
 end
 disp('Exporting Dataset:    Done.');
 %% Callback
@@ -46,11 +44,11 @@ if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
     callbackresult = NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
     disp('Applying Callback:    Done.');
 end
-%% Update metadata file
+%% Prepare Metadata
 result.meta = struct([]);
 if ~strcmp(sourceformat,'Unknown')
     metaresult = NeuroAnalysis.Base.EvalFun( ...
-        ['NeuroAnalysis.',sourceformat,'.MetadataPrepare'], ...
+        ['NeuroAnalysis.',sourceformat,'.PrepareMetadata'], ...
         {dataset,callbackresult});
     if metaresult.status
         result.meta = metaresult.meta;
