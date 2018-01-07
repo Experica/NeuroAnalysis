@@ -1,5 +1,5 @@
-function [ result ] = MetadataPrepare( dataset,callbackresult )
-%METADATAUPDATE Update metadata for exported files
+function [ result ] = PrepareMetadata( dataset,callbackresult )
+%PREPAREMETADATA Update metadata for exported files
 %   Detailed explanation goes here
 
 %% Read metadata
