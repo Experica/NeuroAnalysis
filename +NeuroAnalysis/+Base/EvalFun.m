@@ -12,7 +12,7 @@ catch ME
     end
     result.status = false;
     result.fun = fun;
-    result.args = eval(['{',args,'}']);
+    result.args = argin;
 end
 
 end
