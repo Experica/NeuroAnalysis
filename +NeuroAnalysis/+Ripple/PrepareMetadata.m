@@ -7,10 +7,12 @@ result.status = false;
 result.source = '';
 result.meta = struct([]);
 test = struct;
-test.filepath = dataset.filepath;
-[test.filedir, test.filename, test.ext] = fileparts(test.filepath);
+% Required fields
+test.files = {dataset.filepath};
 test.sourceformat = dataset.sourceformat;
 test.dateadded = now;
+% Ripple-specific fields
+[~, test.filename, ~] = fileparts(dataset.filepath);
 if ~isempty(dataset) && isfield(dataset, 'ex')
     fields = {'ID', 'Subject_ID', 'File_ID',...
         'RecordSite','RecordSession'};
@@ -20,7 +22,6 @@ if ~isempty(callbackresult) && isa(callbackresult,'struct')
     test = NeuroAnalysis.Base.copyStructFields(callbackresult, test, ...
         fieldnames(callbackresult));
 end
-test.key = 'filename';
 result.status = true;
 result.source = dataset.filepath;
 result.meta = test;

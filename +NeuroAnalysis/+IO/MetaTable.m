@@ -4,6 +4,7 @@ classdef MetaTable < handle
     
     properties (Access = private)
         Tests       % Structure of metadata
+        fileID
     end
     
     methods (Access = public)
@@ -14,24 +15,61 @@ classdef MetaTable < handle
             % will be created
             if exist(filepath, 'file')
                 metafile = load(filepath);
+                obj.fileID = fopen(filepath); % to prevent access
                 obj.Tests = metafile.Tests;
             else
                 obj.Tests = struct([]);
+                metafile = struct();
+                save(filepath, '-struct', 'metafile', '-v7.3');
+                obj.fileID = fopen(filepath);
             end
         end
         
-        function addEntries(obj, tests, deleteMissing)
-            %ADDENTRIES Add multiple tests
-            % if deleteMissing is true, then any tests not supplied in the
-            % input will be removed
-            oldIdx = length(obj.Tests);
-            for t = 1:length(tests)
-                [obj.Tests, merged] = obj.merge(obj.Tests, tests{t});
-                oldIdx = oldIdx - merged;
+        function addEntry(obj, test)
+            %ADDENTRY Add a test            
+
+            % Add missing fields to this object's Tests structure
+            fields = setdiff(fieldnames(test), fieldnames(obj.Tests));
+            emptyCell = cell(length(obj.Tests),1);
+            for f = 1:length(fields)
+                if any(strcmpi(fields{f}, fieldnames(obj.Tests)))
+                    error(['Fieldnames must be unique and case-insensitive (%s)',...
+                        fields{f}]);
+                end
+                [obj.Tests.(fields{f})] = emptyCell{:};
             end
-            if deleteMissing
-                obj.Tests = obj.Tests(oldIdx+1:end);
+            
+            % Search for existing entries
+            sf = false(length(obj.Tests),1);
+            for t = 1:length(obj.Tests)
+                sf(t) = isequal(obj.Tests(t).sourceformat, test.sourceformat);
             end
+            match = NeuroAnalysis.Base.EvalFun(...
+                ['NeuroAnalysis.',test.sourceformat,'.MatchMetadata'],...
+                {test, obj.Tests(sf)});
+            
+            % Merge if necessary
+            if match
+                toMerge = find(sf, match, 'first');
+                toMerge = toMerge(end);
+                newTest = NeuroAnalysis.Base.EvalFun(...
+                    ['NeuroAnalysis.',test.sourceformat,'.MergeMetadata'],...
+                    {test, obj.Tests(toMerge)});
+                
+                toKeep = ones(1,length(obj.Tests)); 
+                toKeep(toMerge) = 0;
+                obj.Tests = obj.Tests(logical(toKeep));
+            else
+                newTest = test;
+            end
+            
+            % Add missing fields to the test
+            fields = setdiff(fieldnames(obj.Tests), fieldnames(newTest));
+            for f = 1:length(fields)
+                newTest.(fields{f}) = {};
+            end
+            
+            obj.Tests(end+1) = newTest;
         end
         
         function Tests = query(obj, varargin)
@@ -59,6 +97,7 @@ classdef MetaTable < handle
         function export(obj, filepath)
             %EXPORT save to disk
             disp(['Saving metadata:    ',filepath,'    ...']);
+            fclose(obj.fileID);
             metafile.Tests = obj.Tests;
             fields = fieldnames(obj.Tests);
             for f=1:length(fields)
@@ -67,48 +106,43 @@ classdef MetaTable < handle
             save(filepath, '-struct', 'metafile', '-v7.3');
             disp('Saving metadata:    Done.');
         end
+        
+        function [Missing] = synchronize(obj, verbose)
+            %SYNCHRONIZE remove entries without existing files
+            disp('Synchronizing metadata:   ...');
+            Missing = struct([]);
+            fields = [fieldnames(obj.Tests); {'missingFiles'}];
+            emptyCell = cell(0,1);
+            for f = 1:length(fields)
+                [Missing.(fields{f})] = emptyCell{:};
+            end
+            if isempty(obj.Tests)
+                return;
+            end
+            filesExist = true(length(obj.Tests),1); 
+            for t = 1:length(obj.Tests)
+                test = obj.Tests(t);
+                test.missingFiles = {};
+                for f = 1:length(test.files)
+                    if ~exist(test.files{f},'file')
+                        filesExist(t) = false;
+                        test.missingFiles = [test.missingFiles test.files(f)];
+                        if verbose
+                            disp(['Synchronizing metadata:    Missing file: ',...
+                                test.files{f}]);
+                        end     
+                    end
+                end
+                Missing(t) = test;
+            end
+            Missing = Missing(~filesExist);
+            obj.Tests = obj.Tests(filesExist);
+            disp('Synchronizing metadata:    Done.');
+        end
     end
      
     methods (Static, Access = private)
 
-         function [Tests, merged] = merge(Tests, test)
-            %MERGE Merge a test to a structure of tests
-
-            % Add missing fields to this object's Tests structure
-            fields = setdiff(fieldnames(test), fieldnames(Tests));
-            emptyCell = cell(length(Tests),1);
-            for f = 1:length(fields)
-                if any(strcmpi(fields{f}, fieldnames(Tests)))
-                    error(['Fieldnames must be unique and case-insensitive (%s)',...
-                        fields{f}]);
-                end
-                [Tests.(fields{f})] = emptyCell{:};
-            end
-            
-            % Merge according to sourceformat if necessary
-            toMerge = false(length(Tests),1);
-            for t = 1:length(Tests)
-                toMerge(t) = isequal(Tests(t).(test.key), test.(test.key));
-            end
-            merged = sum(toMerge);
-            if merged
-                assert(merged == 1)
-                newTest = NeuroAnalysis.Base.EvalFun(...
-                    ['NeuroAnalysis.',test.sourceformat,'.MetadataMerge'],...
-                    {test, Tests(toMerge)});
-            else
-                newTest = test;
-            end
-            
-            % Add missing fields to the test
-            Tests = Tests(~toMerge);
-            fields = setdiff(fieldnames(Tests), fieldnames(newTest));
-            for f = 1:length(fields)
-                newTest.(fields{f}) = {};
-            end
-            Tests(end+1) = newTest;
-        end
-        
         function value = getfieldi(S,field)
             %GETFIELDI case-insensitive dynamic structure field access
             names = fieldnames(S);
