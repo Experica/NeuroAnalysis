@@ -4,7 +4,6 @@ classdef MetaTable < handle
     
     properties (Access = private)
         Tests       % Structure of metadata
-        fileID
     end
     
     methods (Access = public)
@@ -15,13 +14,9 @@ classdef MetaTable < handle
             % will be created
             if exist(filepath, 'file')
                 metafile = load(filepath);
-                obj.fileID = fopen(filepath); % to prevent access
                 obj.Tests = metafile.Tests;
             else
                 obj.Tests = struct([]);
-                metafile = struct();
-                save(filepath, '-struct', 'metafile', '-v7.3');
-                obj.fileID = fopen(filepath);
             end
         end
         
@@ -97,7 +92,6 @@ classdef MetaTable < handle
         function export(obj, filepath)
             %EXPORT save to disk
             disp(['Saving metadata:    ',filepath,'    ...']);
-            fclose(obj.fileID);
             metafile.Tests = obj.Tests;
             fields = fieldnames(obj.Tests);
             for f=1:length(fields)
@@ -117,6 +111,7 @@ classdef MetaTable < handle
                 [Missing.(fields{f})] = emptyCell{:};
             end
             if isempty(obj.Tests)
+                disp('Synchronizing metadata:   Done. (Empty metadata file)');
                 return;
             end
             filesExist = true(length(obj.Tests),1); 

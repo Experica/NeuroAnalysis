@@ -6,6 +6,7 @@ import NeuroAnalysis.VisStim.*
 
 % Experimental parameters
 [ex.Subject_ID, ex.File_ID, ex.RecordSite, ex.ID] = parseFilePath(ex.DataPath);
+ex.RecordSession = '';
 ex.EnvParam = [];
 
 % Monitor resolution, size, etc.
@@ -16,20 +17,20 @@ else
 end
 
 if isfield(ex.raw, 'MonitorDistance')
-    ex.EnvParam.MonitorDistance = ex.raw.MonitorDistance;
+    ex.EnvParam.ScreenToEye = ex.raw.MonitorDistance;
 else
-    ex.EnvParam.MonitorDistance = NaN;
+    ex.EnvParam.ScreenToEye = NaN;
 end
 
 if isfield(ex.raw, 'MonSize') && ischar(ex.raw.MonSize)
     ex.EnvParam.MonitorDegrees = sscanf(ex.raw.MonSize,'%f x %f');
     ppd = mean(ex.EnvParam.MonitorResolution ./ ex.EnvParam.MonitorDegrees);
-    ppi = ppd/(2*ex.EnvParam.MonitorDistance*tand(0.5))*2.54; % convert to inches
+    ppcm = ppd/(2*ex.EnvParam.ScreenToEye*tand(0.5));
     ex.EnvParam.MonitorDiagonal = round(sqrt((...
         ex.EnvParam.MonitorResolution(1)^2 + ...
-        ex.EnvParam.MonitorResolution(2)^2))/ppi);
+        ex.EnvParam.MonitorResolution(2)^2))/ppcm);
 elseif isfield(ex.raw, 'MonSize')
-    ex.EnvParam.MonitorDiagonal = ex.raw.MonSize;
+    ex.EnvParam.MonitorDiagonal = ex.raw.MonSize*2.54; % convert to cm
 else
     ex.EnvParam.MonitorDiagonal = NaN;
 end
@@ -64,6 +65,24 @@ else
 end
 ex.EnvParam.Position = Position;
 
+% BG Color
+if isfield(ex.raw, 'blanks')
+    ex.EnvParam.BGColor = [repmat(ex.raw.blanks/255, 1, 3) 1];
+else
+    ex.EnvParam.BGColor = [0.5 0.5 0.5 1];
+end
+
+% Grating type
+if isfield(ex.raw, 'MakeSquare') && ~contains(ex.ID, 'Bar') && ...
+        ~contains(ex.ID, 'Circle') && ~contains(ex.ID, 'Latency') && ...
+        ~strcmp(ex.ID, 'RFmap') && ~strcmp(ex.ID, 'WholeScreenMapLP')
+    if ex.raw.MakeSquare
+        ex.EnvParam.GratingType = 'Square';
+    else
+        ex.EnvParam.GratingType = 'Sinusoidal';
+    end
+end
+
 % Name changes
 if isfield(ex.raw, 'SF') && ~contains(ex.ID, 'Spatial')
     ex.EnvParam.SpatialFreq = ex.raw.SF;
@@ -74,6 +93,7 @@ end
 if isfield(ex.raw, 'StimSize') && ~contains(ex.ID, 'Aperture') && ...
         ~contains(ex.ID, 'Apt')
     ex.EnvParam.Diameter = ex.raw.StimSize;
+    ex.EnvParam.Size = [ex.raw.StimSize, ex.raw.StimSize];
 end
 if isfield(ex.raw, 'XbarSize') && isfield(ex.raw, 'YbarSize') && ...
         contains(ex.ID, 'Bar')
@@ -148,16 +168,19 @@ switch ex.ID
         CondTest.StimOff = data(:,4);
         CondTest.CondRepeat = data(:,3);
         CondTest.CondIndex = ones(size(data,1),1);
+        CondTestCond.On = ones(size(data,1),1);
     case 'LaserGratings'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,2);
         CondTest.CondRepeat = data(:,4);
         CondTest.CondIndex = data(:,5);
+        CondTestCond.On = ones(size(data,1),1);
     case 'LaserON'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,2);
         CondTest.CondRepeat = data(:,4);
         CondTest.CondIndex = ones(size(data,1),1);
+        CondTestCond.On = ones(size(data,1),1);
     case 'PatternMotion'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,8);
@@ -255,12 +278,14 @@ switch ex.ID
         end
 end
 
-% Generate new condition numbers - old ones are sometimes wrong
-if ~isempty(CondTestCond)
-    [Conditions, ~, conditionNo] = unique(struct2table(CondTestCond));
-    CondTest.CondIndex = conditionNo;
-    ex.Cond = table2struct(Conditions, 'ToScalar', true);
+if isempty(CondTestCond)
+    error(['No conditions for ', ex.DataPath]);
 end
+
+% Generate new condition numbers - old ones are sometimes wrong
+[Conditions, ~, conditionNo] = unique(struct2table(CondTestCond));
+CondTest.CondIndex = conditionNo;
+ex.Cond = table2struct(Conditions, 'ToScalar', true);
 
 ex.CondTest = CondTest;
 ex.CondTestCond = CondTestCond;
@@ -285,7 +310,7 @@ else
     ex.CondRepeat = max(CondTest.CondRepeat);
 end
 
-% Convert CondIndex to 1-base
+% Convert CondIndex to integers
 ex.CondTest.CondIndex = int32(ex.CondTest.CondIndex);
 ex.CondTest.CondRepeat = int32(ex.CondTest.CondRepeat);
 

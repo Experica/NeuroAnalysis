@@ -16,7 +16,7 @@ test.dateadded = now;
 if ~isempty(dataset) && isfield(dataset, 'ex')
     fields = {'ID', 'Subject_ID', 'File_ID',...
         'RecordSite','RecordSession'};
-    test = NeuroAnalysis.Base.copyStructFields(dataset.ex, test, fields);
+    test = NeuroAnalysis.Base.copyStructFields(dataset.ex, test, fields, @(x)char(string(x)));
 end
 if ~isempty(callbackresult) && isa(callbackresult,'struct')
     test = NeuroAnalysis.Base.copyStructFields(callbackresult, test, ...
@@ -26,3 +26,4 @@ result.status = true;
 result.source = dataset.filepath;
 result.meta = test;
 end
+

@@ -13,23 +13,26 @@
 %
 %urut/may07
 %modified leo scholl december 2017
-function target = copyStructFields(src,target,fieldsSrc)
+function target = copyStructFields(src,target,fieldsSrc,valueFun)
 if ~isstruct(src)
     warning('src is not a struct - ignore. nothing is copied.');
     return;
 end
 
-if nargin==2 
+if nargin==2 || isempty(fieldsSrc)
     fieldsSrc=fieldnames(src);
+end
+
+if nargin<4
+    valueFun = [];
 end
 
 for i=1:length(fieldsSrc)
     fieldSrc=fieldsSrc{i};
-    fieldFun=@(x)x;
     
     if iscell(fieldSrc)
         if length(fieldSrc) > 2
-            fieldFun=fieldSrc{3};
+            valueFun=fieldSrc{3};
         end
         fieldTarget=fieldSrc{2};
         fieldSrc=fieldSrc{1};
@@ -38,6 +41,10 @@ for i=1:length(fieldsSrc)
     end
     
     if isfield(src,fieldSrc) 
-        target.(fieldTarget) = fieldFun(src.(fieldSrc));   %a dynamic field name instead of eval
+        if ~isempty(valueFun)
+            target.(fieldTarget) = valueFun(src.(fieldSrc));   %a dynamic field name instead of eval
+        else
+            target.(fieldTarget) = src.(fieldSrc);
+        end
     end
 end

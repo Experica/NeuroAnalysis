@@ -9,27 +9,32 @@ if isa(dataset,'cell')
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     return;
 end
-%% Get dataset and export path
+%% Prepare
 result.status = false;
 result.source = '';
-if isa(dataset,'char')
-    result.source = dataset;
-    if ~strcmp(sourceformat,'Unknown')
-        dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],[{dataset},varargin]);
-        if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
-            return;
-        end
-        filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
-        exportpath = fullfile(exportdir,[filename,'.mat']);
-    else
-        [~,filename,ext]=fileparts(dataset);
-        exportpath=fullfile(exportdir,[filename,ext]);
+assert(isa(dataset,'char'));
+result.source = dataset;
+if ~strcmp(sourceformat,'Unknown')
+    % Prepare new dataset from file
+    dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],...
+        [{dataset, exportdir},varargin]);
+    if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
+        return;
     end
+    % Set the export path
+    if ~isfield(dataset, 'filepath') || isempty(dataset.filepath)
+        filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
+        dataset.filepath = fullfile(exportdir,[filename,'.mat']);
+    end
+    exportpath = dataset.filepath;
+else
+    % Unknown source, just copy
+    [~,filename,ext]=fileparts(dataset);
+    exportpath=fullfile(exportdir,[filename,ext]);
 end
 %% Save dataset
 disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
-    dataset.filepath = exportpath;
     save(exportpath,'dataset','-v7.3');
 else
     copyfile(dataset,exportpath);
