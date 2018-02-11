@@ -12,7 +12,7 @@ dataset = p.Results.dataset;
 
 import NeuroAnalysis.VLab.*
 %% check file
-vlabdataset = struct([]);
+vlabdataset = [];
 [hfile] = fopen(filepath,'r');
 if hfile == -1
     warning(['Can not open file: ',filepath]);
@@ -25,7 +25,6 @@ disp('Reading VLab File:    Done.');
 %% Prepare data
 disp('Preparing VLab Data:    ...');
 if ~isempty(ex)
-    vlabdataset = struct;
     vlabdataset.ex = ex;
     vlabdataset.ex.t0=0;
     if ~isempty(dataset)

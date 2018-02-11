@@ -1,29 +1,34 @@
 function [ result ] = PrepareMetadata( dataset,callbackresult )
-%PREPAREMETADATA Update metadata for exported files
+%PREPAREMETADATA Prepare metadata for exported dataset and its callbackresult
 %   Detailed explanation goes here
 
-%% Read metadata
-result.status = false;
-result.source = '';
-result.meta = struct([]);
-test = struct;
-% Required fields
-test.files = {dataset.filepath};
-test.sourceformat = dataset.sourceformat;
-test.dateadded = now;
-% Ripple-specific fields
-[~, test.filename, ~] = fileparts(dataset.filepath);
-if ~isempty(dataset) && isfield(dataset, 'ex')
-    fields = {'ID', 'Subject_ID', 'File_ID',...
-        'RecordSite','RecordSession'};
-    test = NeuroAnalysis.Base.copyStructFields(dataset.ex, test, fields, @(x)char(string(x)));
+result=[];
+%% Prepare experimental metadata
+exmeta = [];
+if (~isempty(dataset) && isfield(dataset,'ex'))
+    exmeta = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',dataset.ex.sourceformat,'.PrepareMetadata'], ...
+        {dataset,callbackresult});
 end
-if ~isempty(callbackresult) && isa(callbackresult,'struct')
-    test = NeuroAnalysis.Base.copyStructFields(callbackresult, test, ...
-        fieldnames(callbackresult));
+%% Prepare Ripple metadata
+ripplemeta = [];
+if (~isempty(dataset))
+    ripplemeta.files={dataset.filepath};
+    [~, ripplemeta.filename, ~] = fileparts(dataset.filepath);
+    ripplemeta.sourceformat = dataset.sourceformat;
 end
-result.status = true;
-result.source = dataset.filepath;
-result.meta = test;
+%% Get Callback metadata
+callbackmeta = [];
+if(~isempty(callbackresult) && isfield(callbackresult,'result'))
+    callbackmeta = callbackresult.result;
+end
+%% Combine metadata
+meta = NeuroAnalysis.Base.mergestruct(exmeta,ripplemeta);
+if (~isempty(meta) && ~isempty(fieldnames(meta)))
+    if (~isempty(callbackmeta) && ~isempty(fieldnames(callbackmeta)))
+        meta.result = callbackmeta;
+    end
+    result=meta;
+end
+
 end
 

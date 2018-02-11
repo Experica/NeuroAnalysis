@@ -19,7 +19,7 @@ analogrange = p.Results.analogrange;
 
 import NeuroAnalysis.Ripple.*
 %% Prepare all data files
-dataset = struct([]);
+dataset = [];
 [hfile] = fopen(filepath,'r');
 if hfile == -1
     warning(['Can not open file: ',filepath]);

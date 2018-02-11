@@ -12,6 +12,7 @@ end
 %% Prepare
 result.status = false;
 result.source = '';
+dataset=[];
 if (~isa(datafile,'char'))
     return;
 end
@@ -28,7 +29,7 @@ if ~strcmp(sourceformat,'Unknown')
     end
     exportpath = dataset.filepath;
 else
-    % Unknown source, just prepare the path for copied file
+    % Unknown source, just prepare the path for the file to be copied
     [~,filename,ext]=fileparts(datafile);
     exportpath=fullfile(exportdir,[filename,ext]);
 end
@@ -44,20 +45,20 @@ disp('Exporting Dataset:    Done.');
 %% Callback
 callbackfun = callback{1};
 callbackarg = callback{2};
-callbackresult = struct([]);
+callbackresult = [];
 if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
     disp(['Applying Callback:    ',callbackfun,'    ...']);
     callbackresult = NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
     disp('Applying Callback:    Done.');
 end
 %% Prepare Metadata
-result.meta = struct([]);
+result.meta =[];
 if ~strcmp(sourceformat,'Unknown')
-    metaresult = NeuroAnalysis.Base.EvalFun( ...
+    meta = NeuroAnalysis.Base.EvalFun(...
         ['NeuroAnalysis.',sourceformat,'.PrepareMetadata'], ...
         {dataset,callbackresult});
-    if metaresult.status
-        result.meta = metaresult.meta;
+    if (~isempty(meta))
+        result.meta = meta;
     end
 end
 result.status = true;
