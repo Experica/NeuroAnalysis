@@ -2,7 +2,6 @@ function [ vlabdataset ] = Prepare( filepath, varargin )
 %PREPARE Read and Prepare VLab data
 %   Detailed explanation goes here
 
-import NeuroAnalysis.VLab.*
 p = inputParser;
 p.StructExpand = false;
 addRequired(p,'filepath');
@@ -10,20 +9,24 @@ addOptional(p,'dataset',struct([]));
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 dataset = p.Results.dataset;
+
+import NeuroAnalysis.VLab.*
 %% check file
 vlabdataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    error(['Can not open file: ',filepath]);
+    warning(['Can not open file: ',filepath]);
+    return;
 end
-vlabdataset = struct;
 %% Read data
 disp(['Reading VLab File:    ',filepath,'    ...']);
-vlabdataset.ex = yaml.ReadYaml(filepath);
+ex = yaml.ReadYaml(filepath);
 disp('Reading VLab File:    Done.');
 %% Prepare data
-disp(['Preparing VLab File:    ',filepath,'    ...']);
-if ~isempty(vlabdataset.ex)
+disp('Preparing VLab Data:    ...');
+if ~isempty(ex)
+    vlabdataset = struct;
+    vlabdataset.ex = ex;
     vlabdataset.ex.t0=0;
     if ~isempty(dataset)
         if isfield(dataset,'digital')
@@ -33,6 +36,7 @@ if ~isempty(vlabdataset.ex)
             end
         end
     end
+    vlabdataset.ex = NeuroAnalysis.VLab.parseex(vlabdataset.ex);
     [condon,condoff] =NeuroAnalysis.VLab.parsecondonoff(vlabdataset.ex,dataset,vlabconfig.MarkDCh,vlabconfig.MarkSearchRadius);
     if ~isempty(condon)
         vlabdataset.ex.CondTest.CondOn = condon;
@@ -40,10 +44,12 @@ if ~isempty(vlabdataset.ex)
     if ~isempty(condoff)
         vlabdataset.ex.CondTest.CondOff = condoff;
     end
-    vlabdataset.ex = NeuroAnalysis.VLab.parseex(vlabdataset.ex);
+    
+    vlabdataset.ex.source = filepath;
+    vlabdataset.ex.sourceformat = 'VLab';
     
     vlabdataset.source = filepath;
     vlabdataset.sourceformat = 'VLab';
 end
-disp('Preparing VLab File:    Done.');
+disp('Preparing VLab Data:    Done.');
 end

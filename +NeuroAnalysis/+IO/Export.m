@@ -1,43 +1,44 @@
-function [ result ] = Export(dataset, exportdir,sourceformat,isparallel,callback,varargin )
+function [ result ] = Export(datafile, exportdir,sourceformat,isparallel,callback,varargin )
 %EXPORT Export prepared dataset in Matlab MAT format file
 %   Detailed explanation goes here
 
 %% Batch export
-if isa(dataset,'cell')
-    funlist=repelem({'NeuroAnalysis.IO.Export'},length(dataset));
-    vararginlist = arrayfun(@(i)[i,{exportdir,sourceformat,isparallel,callback},varargin],dataset,'UniformOutput',false);
+if isa(datafile,'cell')
+    funlist=repelem({'NeuroAnalysis.IO.Export'},length(datafile));
+    vararginlist = arrayfun(@(i)[i,{exportdir,sourceformat,isparallel,callback},varargin],datafile,'UniformOutput',false);
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     return;
 end
 %% Prepare
 result.status = false;
 result.source = '';
-assert(isa(dataset,'char'));
-result.source = dataset;
+if (~isa(datafile,'char'))
+    return;
+end
 if ~strcmp(sourceformat,'Unknown')
-    % Prepare new dataset from file
+    % Prepare dataset from file
     dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],...
-        [{dataset, exportdir},varargin]);
-    if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
+        [{datafile, exportdir},varargin]);
+    if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
         return;
     end
-    % Set the export path
+    % Get the export path
     if ~isfield(dataset, 'filepath') || isempty(dataset.filepath)
-        filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
-        dataset.filepath = fullfile(exportdir,[filename,'.mat']);
+        dataset.filepath = fullfile(exportdir,[NeuroAnalysis.Base.filenamenodirext(datafile),'.mat']);
     end
     exportpath = dataset.filepath;
 else
-    % Unknown source, just copy
-    [~,filename,ext]=fileparts(dataset);
+    % Unknown source, just prepare the path for copied file
+    [~,filename,ext]=fileparts(datafile);
     exportpath=fullfile(exportdir,[filename,ext]);
 end
+result.source = datafile;
 %% Save dataset
 disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
     save(exportpath,'dataset','-v7.3');
 else
-    copyfile(dataset,exportpath);
+    copyfile(datafile,exportpath);
 end
 disp('Exporting Dataset:    Done.');
 %% Callback

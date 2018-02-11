@@ -1,5 +1,5 @@
 function [t] = findstatetime(stateevents,state)
-%FINDSTATETIME Extract timestamp of state event
+%FINDSTATETIME Extract timestamps of state event
 %   Detailed explanation goes here
 
 t=[];

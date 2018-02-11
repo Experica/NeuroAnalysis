@@ -12,11 +12,12 @@ progress = p.Results.progress;
 dataset = struct([]);
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    error(['Can not open file: ',filepath]);
+    warning(['Can not open file: ',filepath]);
+    return;
 end
+%% Parse block header
 disp(['Reading OI Block File:    ',filepath,'    ...']);
 dataset=struct;
-%% Parse block header
 % Data Integrity
 dataset.imagehead.filesize = fread(hfile,1,'*long');
 dataset.imagehead.checksumheader = fread(hfile,1,'*long'); % Beginning with imagehead.lenheader
