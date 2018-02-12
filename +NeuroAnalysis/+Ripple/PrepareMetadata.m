@@ -1,8 +1,8 @@
-function [ result ] = PrepareMetadata( dataset,callbackresult )
+function [ meta ] = PrepareMetadata( dataset,callbackresult )
 %PREPAREMETADATA Prepare metadata for exported dataset and its callbackresult
 %   Detailed explanation goes here
 
-result=[];
+meta=[];
 %% Prepare experimental metadata
 exmeta = [];
 if (~isempty(dataset) && isfield(dataset,'ex'))
@@ -27,7 +27,6 @@ if (~isempty(meta) && ~isempty(fieldnames(meta)))
     if (~isempty(callbackmeta) && ~isempty(fieldnames(callbackmeta)))
         meta.result = callbackmeta;
     end
-    result=meta;
 end
 
 end
