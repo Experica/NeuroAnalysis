@@ -18,7 +18,7 @@ if (~isempty(dataset))
 end
 %% Get Callback metadata
 callbackmeta = [];
-if(~isempty(callbackresult) && isfield(callbackresult,'result'))
+if(~isempty(callbackresult) && isfield(callbackresult,'result')) && isstruct(callbackresult.result)
     callbackmeta = callbackresult.result;
 end
 %% Combine metadata
