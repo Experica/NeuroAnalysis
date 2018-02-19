@@ -11,10 +11,10 @@ if isa(datafile,'cell')
 end
 %% Open dataset
 result.status = false;
-result.source = '';
+result.source = datafile;
 dataset=[];
 result.meta = [];
-if (~isa(datafile,'char'))
+if ~isa(datafile,'char') || exist(datafile, 'file') ~= 2
     return;
 end
 disp(['Reading Dataset:    ',datafile,'    ...']);
@@ -25,7 +25,6 @@ if (~isempty(loadresult) && isfield(loadresult,'dataset'))
 else
     return;
 end
-result.source = datafile;
 %% Extract metadata
 meta = NeuroAnalysis.Base.EvalFun(...
     ['NeuroAnalysis.',dataset.sourceformat,'.PrepareMetadata'],...

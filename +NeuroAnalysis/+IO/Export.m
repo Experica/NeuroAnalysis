@@ -11,7 +11,7 @@ if isa(datafile,'cell')
 end
 %% Prepare
 result.status = false;
-result.source = '';
+result.source = datafile;
 dataset=[];
 if (~isa(datafile,'char'))
     return;
@@ -23,6 +23,10 @@ if ~strcmp(sourceformat,'Unknown')
     if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
         return;
     end
+    % Standardize experimental parameters
+    if isfield(dataset, 'ex')
+        dataset.ex = NeuroAnalysis.Base.StandardizeEx(dataset.ex);
+    end
     % Get the export path
     if ~isfield(dataset, 'filepath') || isempty(dataset.filepath)
         dataset.filepath = fullfile(exportdir,[NeuroAnalysis.Base.filenamenodirext(datafile),'.mat']);
@@ -33,7 +37,6 @@ else
     [~,filename,ext]=fileparts(datafile);
     exportpath=fullfile(exportdir,[filename,ext]);
 end
-result.source = datafile;
 %% Save dataset
 disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
