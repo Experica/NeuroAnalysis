@@ -100,8 +100,22 @@ end
 
 % Correct experiments with short pulse stim marks (should be none for
 % VisStim experiments)
-if min(off - on) < 0.01 % 10 ms pulse maximum
+if min(off - on) < SearchRadius % Search radius sets the pulse minimum
     off = on + stimTimesPTB(2:2:end) - stimTimesPTB(1:2:end);
+end
+
+% None-ICI Mark Mode
+if ex.PreICI==0 && ex.SufICI==0 && ~isempty(on) && ~isempty(off)
+    for i=1:nct-1
+        currentontime=on(i);
+        nextontime = on(i+1);
+        if (nextontime - currentontime) > (ex.CondDur+2*SearchRadius)
+            off(i) = currentontime + ex.CondDur;
+        else
+            off(i)=nextontime;
+        end
+    end
+    off(end)=on(end)+ex.CondDur;
 end
 
 difference = on - stimTimesPTB(1:2:end);
@@ -120,7 +134,6 @@ function corrections = correctTimes(reference, newTimes, ...
     newValues, searchRadius)
 
 corrections = nan(length(reference),1);
-delta = [];
 i = 1; % next new timestamp
 
 % Correct each timestamp t in the reference series

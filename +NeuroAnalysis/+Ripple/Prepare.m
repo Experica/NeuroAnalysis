@@ -254,9 +254,13 @@ if(~isempty(dataset))
     elseif(isvisstimdata)
         visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,exportdir,dataset);
         if ~isempty(visstimdataset)
-            dataset.ex = visstimdataset.ex;
+            dataset.ex = visstimdataset;
             dataset.filepath = visstimdataset.filepath;
         end
+    end
+    % Experimental data cannot be not empty
+    if ~isfield(dataset, 'ex') || isempty(dataset.ex)
+        dataset = [];
     end
 end
 

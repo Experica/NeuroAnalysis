@@ -13,7 +13,7 @@ if funn~=argn
     error('Number of function (%d) does not match number of arguments (%d).',funn,argn);
 end
 
-if isparallel
+if funn > 1 && isparallel
     if isempty(gcp('nocreate'))
         parpool; % start the parallel pool
     end

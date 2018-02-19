@@ -5,13 +5,13 @@ function ex = parseex( ex )
 import NeuroAnalysis.VisStim.*
 
 % Experimental parameters
-[ex.Subject_ID, ex.File_ID, ex.RecordSite, ex.ID] = parseFilePath(ex.DataPath);
+[ex.Subject_ID, ex.File_ID, ex.RecordSite, ex.ID] = parseFilePath(ex.source);
 ex.RecordSession = '';
 ex.EnvParam = [];
 
 % Monitor resolution, size, etc.
 if isfield(ex.raw, 'MonRes')
-    ex.EnvParam.MonitorResolution = sscanf(ex.raw.MonRes,'%f x %f');
+    ex.EnvParam.MonitorResolution = reshape(sscanf(ex.raw.MonRes,'%f x %f'), 1, 2);
 else
     ex.EnvParam.MonitorResolution = [NaN NaN];
 end
@@ -23,7 +23,7 @@ else
 end
 
 if isfield(ex.raw, 'MonSize') && ischar(ex.raw.MonSize)
-    ex.EnvParam.MonitorDegrees = sscanf(ex.raw.MonSize,'%f x %f');
+    ex.EnvParam.MonitorDegrees = reshape(sscanf(ex.raw.MonSize,'%f x %f'), 1, 2);
     ppd = mean(ex.EnvParam.MonitorResolution ./ ex.EnvParam.MonitorDegrees);
     ppcm = ppd/(2*ex.EnvParam.ScreenToEye*tand(0.5));
     ex.EnvParam.MonitorDiagonal = round(sqrt((...
@@ -114,7 +114,7 @@ end
 if ~isfield(ex.raw, 'data') || isempty(ex.raw.data)
     ex.CondTest = [];
     ex.CondRepeat = 0;
-    disp(['no trials for ',ex.DataPath]);
+    disp(['no trials for ',ex.source]);
     return
 end
 
@@ -236,7 +236,7 @@ switch ex.ID
 
         % condition, stimTime, sf, tf, apt, ori, c, dur
         if size(data,2) < 8
-            error(['Unsupported log matrix for ', ex.DataPath]);
+            error(['Unsupported log matrix for ', ex.source]);
         end
         
         CondTest.StimOn = data(:,2);
@@ -274,12 +274,12 @@ switch ex.ID
         elseif contains(ex.ID, 'Velocity')
             CondTestCond.Velocity = velocity;
         else
-            error(['Unsupported log matrix for ', ex.DataPath]);
+            error(['Unsupported log matrix for ', ex.source]);
         end
 end
 
 if isempty(CondTestCond)
-    error(['No conditions for ', ex.DataPath]);
+    error(['No conditions for ', ex.source]);
 end
 
 % Generate new condition numbers - old ones are sometimes wrong
