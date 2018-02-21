@@ -1,4 +1,4 @@
-classdef ExDataStandard
+classdef ExStandard
     %EXDATASTANDARD Case-insensitive naming conventions
     %   Detailed explanation goes here
     
