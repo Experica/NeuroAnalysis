@@ -2,8 +2,8 @@ classdef MetaTable < handle
     %METATABLE Metadata table
     %   Detailed explanation goes here
     
-    properties (Access = private)
-        Tests       % Structure of metadata
+    properties (GetAccess = public, SetAccess = private)
+        Tests       % metadata table in struct array
     end
     
     methods (Access = public)
@@ -17,150 +17,141 @@ classdef MetaTable < handle
                 metafile = load(filepath);
                 obj.Tests = metafile.Tests;
             else
-                obj.Tests = struct([]);
+                obj.Tests = [];
             end
         end
         
         function addRow(obj, test)
-            %ADDROW Add a test            
+            %ADDROW Add a test
             
-            % Add missing fields to this object's Tests structure
-            fields = setdiff(fieldnames(test), fieldnames(obj.Tests));
-            emptyCell = cell(length(obj.Tests),1);
-            for f = 1:length(fields)
-                if any(strcmpi(fields{f}, fieldnames(obj.Tests)))
-                    error(['Fieldnames must be unique and case-insensitive (%s)',...
-                        fields{f}]);
-                end
-                [obj.Tests.(fields{f})] = emptyCell{:};
+            % Add new fields to this object's Tests struct array
+            newfields = setdiff(fieldnames(test), fieldnames(obj.Tests));
+            emptyColumn = cell(length(obj.Tests),1);
+            for i = 1:length(newfields)
+                [obj.Tests.(newfields{i})] = emptyColumn{:};
             end
             
-            % Search for existing entries
-            common = NeuroAnalysis.Base.getstructfields(test,...
+            % Search for duplicate old rows
+            matchindex =  [];
+            searchtemplate = NeuroAnalysis.Base.getstructfields(test,...
                 {'sourceformat', 'Subject_ID', 'RecordSession', ...
                 'RecordSite', 'ID'});
-            keys = fieldnames(common);
-            values = struct2cell(common);
-            roughMatch = obj.queryImpl(keys, values);
-            if any(roughMatch)
-                match = NeuroAnalysis.Base.EvalFun(...
-                    ['NeuroAnalysis.',test.sourceformat,'.MatchMetadata'],...
-                    {test, obj.Tests(roughMatch)});
-            else
-                match =  [];
+            keys = fieldnames(searchtemplate);
+            values = struct2cell(searchtemplate);
+            roughmatchindex = obj.iquery(keys, values);
+            if ~isempty(roughmatchindex)
+                matchindex = NeuroAnalysis.Base.EvalFun(...
+                    ['NeuroAnalysis.',test.sourceformat,'.FindMetadata'],...
+                    {obj,test,roughmatchindex});
             end
             
-            % Merge if necessary
-            if match
-                % Use index of match to find index in roughMatch
-                toMerge = find(roughMatch, match, 'first');
-                toMerge = toMerge(end);
-                
-                % Merge the two tests
-                newTest = NeuroAnalysis.Base.EvalFun(...
+            if ~isempty(matchindex)
+                % Merge old row and test
+                test= NeuroAnalysis.Base.EvalFun(...
                     ['NeuroAnalysis.',test.sourceformat,'.MergeMetadata'],...
-                    {obj.Tests(toMerge), test});
-                
-                % Remove the old row
-                toKeep = ones(1,length(obj.Tests)); 
-                toKeep(toMerge) = 0;
-                obj.Tests = obj.Tests(logical(toKeep));
+                    {obj, test,matchindex});
+                % Delete old row
+                obj.Test(matchindex)=[];
             else
-                newTest = test;
+                % Add missing fields to the test
+                missingfields = setdiff(fieldnames(obj.Tests), fieldnames(test));
+                for i = 1:length(missingfields)
+                    test.(missingfields{i}) = {};
+                end
             end
-            
-            % Add missing fields to the test
-            fields = setdiff(fieldnames(obj.Tests), fieldnames(newTest));
-            for f = 1:length(fields)
-                newTest.(fields{f}) = {};
-            end
-            
-            % Ready to merge
-            % assert(isempty(setdiff(fieldnames(obj.Tests), fieldnames(newTest))));
-            obj.Tests(end+1) = newTest;
+            % Add new row
+            obj.Tests(end+1) = test;
         end
         
         function mt = query(obj, varargin)
-            %QUERY Find matching tests
+            %QUERY Find matching metatable
+            
+            mt=[];
             nargs = length(varargin);
             if nargs == 0 || mod(nargs, 2) == 1
-               error(['inputs should be name,value pairs, e.g. ',...
-                   'query(MetaTable, ''Subject_ID'', ''R1701'')'])
+                warning(['inputs should be name,value pairs, e.g. ',...
+                    'query(MetaTable, ''Subject_ID'', ''R1701'')'])
+                return;
             end
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
-            match = obj.queryImpl(keys, values);
+            matchindex = obj.iquery(keys, values);
+            if isempty(matchindex)
+                warning('No Matching Metadata Found. ');
+                return;
+            end
             mt = NeuroAnalysis.IO.MetaTable();
-            mt.Tests = obj.Tests(match);
-        end
-        
-        function Tests = list(obj)
-            %LIST list all the tests
-            Tests = obj.Tests;
+            mt.Tests = obj.Tests(matchindex);
         end
         
         function export(obj, filepath)
-            %EXPORT save to disk
+            %EXPORT save metadata
+            
             disp(['Saving metadata:    ',filepath,'    ...']);
             metafile.Tests = obj.Tests;
-            fields = fieldnames(obj.Tests);
-            for f=1:length(fields)
-                metafile.TestsScalar.(fields{f}) = {obj.Tests.(fields{f})};
-            end
+            %             fields = fieldnames(obj.Tests);
+            %             for f=1:length(fields)
+            %                 metafile.TestsScalar.(fields{f}) = {obj.Tests.(fields{f})};
+            %             end
             save(filepath, '-struct', 'metafile', '-v7.3');
             disp('Saving metadata:    Done.');
         end
         
-        function [Invalid] = synchronize(obj, verbose)
-            %SYNCHRONIZE remove rows with missing files
+        function [missingtest] = synchronize(obj, verbose)
+            %SYNCHRONIZE remove rows containing missing data files
             % Returns a struct array of invalid tests
+            
+            missingtest=[];
             disp('Synchronizing metadata:   ...');
-            Invalid = struct([]);
-            fields = [fieldnames(obj.Tests); {'missingFiles'}];
-            emptyCell = cell(0,1);
-            for f = 1:length(fields)
-                [Invalid.(fields{f})] = emptyCell{:};
-            end
             if isempty(obj.Tests)
-                disp('Synchronizing metadata:   Done. (Empty metadata file)');
+                disp('Synchronizing metadata:   Done. (Empty Metadata)');
                 return;
             end
-            filesExist = true(length(obj.Tests),1); 
+            
+            missingindex=[];
             for t = 1:length(obj.Tests)
                 test = obj.Tests(t);
-                test.missingFiles = {};
-                % Check that some files are present
-                if isempty(test.files)
-                    filesExist(t) = false;
-                end
-                % Check that all files exist
-                for f = 1:length(test.files)
-                    if ~exist(test.files{f},'file')
-                        filesExist(t) = false;
-                        test.missingFiles = [test.missingFiles test.files(f)];
-                        if verbose
-                            disp(['Synchronizing metadata:    Missing file: ',...
-                                test.files{f}]);
-                        end     
+                missingFiles = {};
+                
+                if ~isempty(test.files)
+                    for i = 1:length(test.files)
+                        if ~exist(test.files{i},'file')
+                            if verbose
+                                disp(['Synchronizing metadata:    Missing file: ',...
+                                    test.files{i},' is removed.']);
+                            end
+                            missingFiles = [missingFiles test.files(i)];
+                            test.files(i)=[];
+                            obj.Tests(t).files(i)=[];
+                        end
                     end
                 end
-                Invalid(t) = test;
+                if isempty(test.files)
+                    missingindex=[missingindex;t];
+                    test.missingFiles= missingFiles;
+                    missingtest=[missingtest;test];
+                elseif ~isempty(missingFiles)
+                    test.missingFiles= missingFiles;
+                    missingtest=[missingtest;test];
+                end
             end
-            Invalid = Invalid(~filesExist);
-            obj.Tests = obj.Tests(filesExist);
+            obj.Tests(missingindex)=[];
             disp('Synchronizing metadata:    Done.');
         end
     end
     
     methods (Access = private)
         
-        function match = queryImpl(obj, keys, values)
-            %QUERYIMPL Internal query for matching tests
-            match = true(length(obj.Tests),1);
-            for t = 1:length(obj.Tests)
-                for kv = 1:length(keys)
-                    match(t) = match(t) && ...
-                        isequal(obj.Tests(t).(keys{kv}), values{kv});
+        function index = iquery(obj, keys, values)
+            %IQUERY internal query for matching tests, return indices
+            index = [];
+            for i = 1:length(obj.Tests)
+                ismatch = true;
+                for j = 1:length(keys)
+                    ismatch = ismatch & isequal(obj.Tests(i).(keys{j}), values{j});
+                end
+                if ismatch
+                    index=[index,i];
                 end
             end
         end
