@@ -6,12 +6,10 @@ if nargin < 3
     ignorecase = false;
 end
 
-import NeuroAnalysis.Base.matchparam
-
 v=[];
 names = fieldnames(paramstruct);
 for i=1:length(names)
-    if matchparam(names{i}, param, ignorecase)
+    if NeuroAnalysis.Base.matchparam(names{i}, param, ignorecase)
         v=paramstruct.(names{i});
         break;
     end

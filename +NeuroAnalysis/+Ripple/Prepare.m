@@ -258,7 +258,7 @@ if(~isempty(dataset))
             dataset.filepath = visstimdataset.filepath;
         end
     end
-    % Experimental data cannot be not empty
+    % Ripple data is useless without experimental data
     if ~isfield(dataset, 'ex') || isempty(dataset.ex)
         dataset = [];
     end
