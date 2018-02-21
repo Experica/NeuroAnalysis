@@ -2,7 +2,7 @@ function [ex] = parseex(ex)
 %PARSEEX Parse VLab Data
 %   Detailed explanation goes here
 
-import NeuroAnalysis.Base.* NeuroAnalysis.VLab.*
+import NeuroAnalysis.VLab.*
 % Trim CondTest
 ctnames = fieldnames(ex.CondTest);
 nct = min(cellfun(@(x)length(ex.CondTest.(x)),ctnames));

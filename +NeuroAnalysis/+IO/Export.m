@@ -23,6 +23,10 @@ if ~strcmp(sourceformat,'Unknown')
     if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
         return;
     end
+    % Standardize experimental parameters
+    if isfield(dataset, 'ex')
+        dataset.ex = NeuroAnalysis.Base.StandardizeEx(dataset.ex);
+    end
     % Get the export path
     if ~isfield(dataset, 'filepath') || isempty(dataset.filepath)
         dataset.filepath = fullfile(exportdir,[NeuroAnalysis.Base.filenamenodirext(datafile),'.mat']);

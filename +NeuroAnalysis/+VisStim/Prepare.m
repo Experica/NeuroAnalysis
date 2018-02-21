@@ -45,8 +45,6 @@ end
 % Fix stim times according to new start and the config file
 ex = NeuroAnalysis.VisStim.adjustStimTimes(ex,...
     dataset,visstimconfig);
-% Standardize experimental parameters
-ex = NeuroAnalysis.Base.StandardizeEx(ex);
 % Organize into dataset with updated filename
 visstimdataset = ex;
 visstimdataset.filepath = fullfile(exportdir, ...

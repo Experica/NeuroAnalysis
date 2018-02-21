@@ -44,7 +44,6 @@ if ~isempty(ex)
         vlabdataset.ex.CondTest.CondOff = condoff;
     end
     
-    vlabdataset.ex = NeuroAnalysis.Base.StandardizeEx(vlabdataset.ex);
     vlabdataset.ex.source = filepath;
     vlabdataset.ex.sourceformat = 'VLab';
     
