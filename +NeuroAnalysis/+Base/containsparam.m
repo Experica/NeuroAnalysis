@@ -2,7 +2,7 @@ function [r] = containsparam(paramstruct,param)
 %CONTAINSPARAM Whether ParamStruct has relevant param field
 %   Detailed explanation goes here
 
-r=any(startsWith(fieldnames(paramstruct),param));
+r = NeuroAnalysis.Base.matchparam(fieldnames(paramstruct),param);
 
 end
 

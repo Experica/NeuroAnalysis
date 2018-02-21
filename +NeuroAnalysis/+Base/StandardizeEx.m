@@ -5,7 +5,7 @@ function [ex] = StandardizeEx(ex)
 import NeuroAnalysis.Base.*
 
 %% Experimental data
-ex = standardizeParams(ex, ExDataStandard);
+ex = standardizeParams(ex, ExStandard);
 
 %% Environment parameters and factors
 if isfield(ex, 'EnvParam')
@@ -17,6 +17,6 @@ end
 if isfield(ex, 'CondTestCond')
     ex.CondTestCond = standardizeParams(ex.CondTestCond, ExFactorStandard);
 end
-disp('Applying Callback:    Done.');
+
 end
 
