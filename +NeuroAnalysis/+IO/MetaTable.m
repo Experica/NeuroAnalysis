@@ -17,7 +17,7 @@ classdef MetaTable < handle
                 metafile = load(filepath);
                 obj.Tests = metafile.Tests;
             else
-                obj.Tests = [];
+                obj.Tests = struct([]);
             end
         end
         

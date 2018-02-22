@@ -26,8 +26,8 @@ for i=1:nct
             on(i) = dintime((i-1)*vlabconfig.NMarkPerCond+1);
             off(i) = dintime((i-1)*vlabconfig.NMarkPerCond+2);
         else
-            tss = ex.CondTest.CondOnTime{i};
-            tes = ex.CondTest.SufICIOnTime{i};
+            tss = ex.CondTest.CondOnTime(i);
+            tes = ex.CondTest.SufICIOnTime(i);
             [isfound,ts,te]=trysearchmarktime(tss,tes,dintime,dinvalue,msr);
             if isfound
                 on(i)=ts;
@@ -38,8 +38,8 @@ for i=1:nct
             end
         end
     else
-        on(i) = ex.CondTest.CondOnTime{i};
-        off(i) = ex.CondTest.SufICIOnTime{i};
+        on(i) = ex.CondTest.CondOnTime(i);
+        off(i) = ex.CondTest.SufICIOnTime(i);
     end
 end
 
