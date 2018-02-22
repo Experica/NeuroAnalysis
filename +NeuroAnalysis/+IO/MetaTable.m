@@ -24,7 +24,7 @@ classdef MetaTable < handle
         function addRow(obj, test)
             %ADDROW Add a test
             
-            % Add new fields to this object's Tests struct array
+            % Add new fields to Tests struct array
             newfields = setdiff(fieldnames(test), fieldnames(obj.Tests));
             emptyColumn = cell(length(obj.Tests),1);
             for i = 1:length(newfields)
@@ -51,7 +51,7 @@ classdef MetaTable < handle
                     ['NeuroAnalysis.',test.sourceformat,'.MergeMetadata'],...
                     {obj, test,matchindex});
                 % Delete old row
-                obj.Test(matchindex)=[];
+                obj.Tests(matchindex)=[];
             else
                 % Add missing fields to the test
                 missingfields = setdiff(fieldnames(obj.Tests), fieldnames(test));
@@ -89,38 +89,38 @@ classdef MetaTable < handle
             
             disp(['Saving metadata:    ',filepath,'    ...']);
             metafile.Tests = obj.Tests;
-            %             fields = fieldnames(obj.Tests);
-            %             for f=1:length(fields)
-            %                 metafile.TestsScalar.(fields{f}) = {obj.Tests.(fields{f})};
-            %             end
             save(filepath, '-struct', 'metafile', '-v7.3');
             disp('Saving metadata:    Done.');
         end
         
-        function [missingtest] = synchronize(obj, verbose)
-            %SYNCHRONIZE remove rows containing missing data files
-            % Returns a struct array of invalid tests
+        function [missingtest] = validate(obj, verbose)
+            %VALIDATE ensure metatable contains valid data files
+            % Returns a struct array of tests where invalid data files appeared
+            
+            if nargin ==1
+                verbose=false;
+            end
             
             missingtest=[];
-            disp('Synchronizing metadata:   ...');
+            disp('Validating metadata:   ...');
             if isempty(obj.Tests)
-                disp('Synchronizing metadata:   Done. (Empty Metadata)');
+                disp('Validating metadata:   Empty.');
                 return;
             end
             
             missingindex=[];
             for t = 1:length(obj.Tests)
                 test = obj.Tests(t);
-                missingFiles = {};
+                missingfiles = {};
                 
                 if ~isempty(test.files)
                     for i = 1:length(test.files)
                         if ~exist(test.files{i},'file')
                             if verbose
-                                disp(['Synchronizing metadata:    Missing file: ',...
+                                disp(['Validating metadata:    Missing file: ',...
                                     test.files{i},' is removed.']);
                             end
-                            missingFiles = [missingFiles test.files(i)];
+                            missingfiles = [missingfiles test.files(i)];
                             test.files(i)=[];
                             obj.Tests(t).files(i)=[];
                         end
@@ -128,22 +128,23 @@ classdef MetaTable < handle
                 end
                 if isempty(test.files)
                     missingindex=[missingindex;t];
-                    test.missingFiles= missingFiles;
+                    test.missingfiles= missingfiles;
                     missingtest=[missingtest;test];
-                elseif ~isempty(missingFiles)
-                    test.missingFiles= missingFiles;
+                elseif ~isempty(missingfiles)
+                    test.missingfiles= missingfiles;
                     missingtest=[missingtest;test];
                 end
             end
             obj.Tests(missingindex)=[];
-            disp('Synchronizing metadata:    Done.');
+            disp('Validating metadata:    Done.');
         end
     end
     
     methods (Access = private)
         
         function index = iquery(obj, keys, values)
-            %IQUERY internal query for matching tests, return indices
+            %IQUERY Internal query for matching tests, return indices
+            
             index = [];
             for i = 1:length(obj.Tests)
                 ismatch = true;
