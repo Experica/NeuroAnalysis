@@ -1,4 +1,4 @@
-function [ visstimdataset ] = Prepare( filepath, exportdir, varargin )
+function [ visstimdataset ] = Prepare( filepath, varargin )
 %PREPARE Read and Prepare VisStim data
 %   Detailed explanation goes here
 
@@ -7,11 +7,9 @@ import NeuroAnalysis.VisStim.*
 p = inputParser;
 p.StructExpand = false;
 addRequired(p,'filepath');
-addRequired(p,'exportdir');
 addOptional(p,'dataset',struct([]));
-parse(p,filepath,exportdir,varargin{:});
+parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
-exportdir = p.Results.exportdir;
 dataset = p.Results.dataset;
 %% check file
 visstimdataset = struct([]);
@@ -47,11 +45,8 @@ ex = NeuroAnalysis.VisStim.adjustStimTimes(ex,...
     dataset,visstimconfig);
 % Standardize experimental parameters
 ex = NeuroAnalysis.Base.StandardizeEx(ex);
-% Organize into dataset with updated filename
+% Organize into dataset
 visstimdataset = ex;
-visstimdataset.filepath = fullfile(exportdir, ...
-    [strjoin({visstimdataset.Subject_ID, visstimdataset.File_ID, ...
-    visstimdataset.RecordSite, visstimdataset.ID},'_'), '.mat']);
 
 disp('Preparing VisStim File:    Done.');
 

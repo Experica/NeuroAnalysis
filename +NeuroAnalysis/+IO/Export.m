@@ -19,7 +19,7 @@ end
 if ~strcmp(sourceformat,'Unknown')
     % Prepare dataset from file
     dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],...
-        [{datafile, exportdir},varargin]);
+        [{datafile},varargin]);
     if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
         return;
     end

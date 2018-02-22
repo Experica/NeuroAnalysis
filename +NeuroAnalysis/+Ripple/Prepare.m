@@ -1,17 +1,15 @@
-function [ dataset ] = Prepare( filepath,exportdir,varargin )
+function [ dataset ] = Prepare( filepath,varargin )
 %PREPARE Read Ripple data by Ripple neuroshare API, experimental data and prepare dataset
 %   Detailed explanation goes here
 
 p = inputParser;
 addRequired(p,'filepath');
-addRequired(p,'exportdir');
 addOptional(p,'secondperunit',1);
 addOptional(p,'datatype',{'Spike','LFP','Hi-Res','Stim','Analog30k','Analog1k','Digital'}); %'Raw'
 addOptional(p,'electroderange',1:5120);
 addOptional(p,'analogrange',10241:10270);
-parse(p,filepath,exportdir,varargin{:});
+parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
-exportdir = p.Results.exportdir;
 secondperunit = p.Results.secondperunit;
 datatype = p.Results.datatype;
 electroderange = p.Results.electroderange;
@@ -252,10 +250,9 @@ if(~isempty(dataset))
             dataset.ex = vlabdataset.ex;
         end
     elseif(isvisstimdata)
-        visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,exportdir,dataset);
+        visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,dataset);
         if ~isempty(visstimdataset)
             dataset.ex = visstimdataset;
-            dataset.filepath = visstimdataset.filepath;
         end
     end
     % Ripple data is useless without experimental data
