@@ -114,7 +114,7 @@ end
 if ~isfield(ex.raw, 'data') || isempty(ex.raw.data)
     ex.CondTest = [];
     ex.CondRepeat = 0;
-    disp(['no trials for ',ex.source]);
+    warning(['no trials for ',ex.source]);
     return
 end
 
@@ -234,52 +234,50 @@ switch ex.ID
         CondTestCond.Color = data(:,3);
     otherwise
 
-        % condition, stimTime, sf, tf, apt, ori, c, dur
+        % StimTimes
         if size(data,2) < 8
-            error(['Unsupported log matrix for ', ex.source]);
+            warning(['Unsupported log file: ', ex.source]);
+            ex = [];
+            return;
         end
         
         CondTest.StimOn = data(:,2);
         CondTest.StimOff = data(:,2) + data(:,8);
         
-        sf = data(:,3);
-        tf = data(:,4);
-        aperture = data(:,5);
-        ori = data(:,6);
-        contrast = data(:,7);
-        
-        % trial no
-        if size(data,2) >= 9
-            ex.CondTest.CondRepeat = data(:,9);
-        end
-        
-        % velocity
+        % Possible factors
+        Factors = [];
+        Factors.SpatialFreq = data(:,3);
+        Factors.TemporalFreq = data(:,4);
+        Factors.Diameter = data(:,5);
+        Factors.Ori = data(:,6);
+        Factors.Contrast = data(:,7);
         if size(data,2) >= 10
-            velocity = data(:,10);
+            Factors.Velocity = data(:,10);
         else
-            velocity = data(:,4)./data(:,3);
+            Factors.Velocity = data(:,4)./data(:,3);
         end
         
-        % condition name
-        if contains(ex.ID, 'Ori')
-            CondTestCond.Orientation = ori;
-        elseif contains(ex.ID, 'Spatial')
-            CondTestCond.SpatialFreq = sf;
-        elseif contains(ex.ID, 'Temporal')
-            CondTestCond.TemporalFreq = tf;
-        elseif contains(ex.ID, 'Contrast')
-            CondTestCond.Contrast = contrast;
-        elseif contains(ex.ID, 'Aperture')
-            CondTestCond.Diameter = aperture;
-        elseif contains(ex.ID, 'Velocity')
-            CondTestCond.Velocity = velocity;
-        else
-            error(['Unsupported log matrix for ', ex.source]);
+        % Split factors to env params and conditions
+        factorNames = fieldnames(Factors);
+        for f=1:length(factorNames)
+            ufv = unique(Factors.(factorNames{f}));
+            if length(ufv) == 1
+                ex.EnvParam.(factorNames{f}) = ufv;
+            else
+                CondTestCond.(factorNames{f}) = Factors.(factorNames{f});
+            end
+        end
+
+        % Trial no
+        if size(data,2) >= 9
+            CondTest.CondRepeat = data(:,9);
         end
 end
 
 if isempty(CondTestCond)
-    error(['No conditions for ', ex.source]);
+    warning(['No conditions found, unsupported log file: ', ex.source]);
+    ex = [];
+    return;
 end
 
 % Generate new condition numbers - old ones are sometimes wrong
