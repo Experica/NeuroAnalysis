@@ -1,17 +1,21 @@
 function [ex] = parseex(ex)
-%PARSEEX Parse VLab Experimental Data
+%PARSEEX Parse VLab Data
 %   Detailed explanation goes here
 
-import NeuroAnalysis.VLab.*
+import NeuroAnalysis.Base.* NeuroAnalysis.VLab.*
 % Trim CondTest
 ctnames = fieldnames(ex.CondTest);
 nct = min(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
 for i=1:length(ctnames)
     ex.CondTest.(ctnames{i}) = ex.CondTest.(ctnames{i})(1:nct);
 end
-% Convert CondIndex to 1-base
-ex.CondTest.CondIndex =cellfun(@(x)int32(x+1), ex.CondTest.CondIndex);
+
+ex.CondTest.CondIndex =cellfun(@(x)int32(x+1), ex.CondTest.CondIndex); % Convert to 1-base
 ex.CondTest.CondRepeat = cellfun(@(x)int32(x), ex.CondTest.CondRepeat);
+ex.CondTest.PreICIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREICI'),true),ex.CondTest.CONDSTATE);
+ex.CondTest.CondOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'COND'),true),ex.CondTest.CONDSTATE);
+ex.CondTest.SufICIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFICI'),true),ex.CondTest.CONDSTATE);
+
 % Try parse Environment Parameter
 if ~isempty(ex.EnvParam)
     envparamnames = fieldnames(ex.EnvParam);
@@ -20,7 +24,7 @@ if ~isempty(ex.EnvParam)
         ex.EnvParam.(p) = tryparseparam(p,ex.EnvParam.(p));
     end
 end
-% Try parse User Experiment Parameter
+% Try parse Experiment Parameter
 if ~isempty(ex.Param)
     paramnames = fieldnames(ex.Param);
     for i=1:length(paramnames)
@@ -39,11 +43,11 @@ else
     isenvoripositionoffset=false;
 end
 if ~isempty(ex.Cond)
-    % try parse condition factor value
+    % parse condition factor values
     fs = fieldnames(ex.Cond);
     for i=1:length(fs)
         f=fs{i};
-        ex.Cond.(f) = cellfun(@(x)tryparseparam(f,x),ex.Cond.(f),'uniformoutput',0);
+        ex.Cond.(f) = cellfun(@(x)tryparseparam(f,x),ex.Cond.(f),'uniformoutput',false);
     end
     % parse condition for each condtest
     for i=1:nct
@@ -100,8 +104,5 @@ if ~isempty(ex.Cond)
     ex.CondTestCond = ctc;
 end
 
-ex.CondTest.PreICIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREICI'),true),ex.CondTest.CONDSTATE);
-ex.CondTest.CondOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'COND'),true),ex.CondTest.CONDSTATE);
-ex.CondTest.SufICIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFICI'),true),ex.CondTest.CONDSTATE);
 end
 

@@ -1,48 +1,63 @@
-function [ result ] = Export(dataset, exportpath,sourceformat,isparallel,callback,varargin )
+function [ result ] = Export(datafile, exportdir,sourceformat,isparallel,callback,varargin )
 %EXPORT Export prepared dataset in Matlab MAT format file
 %   Detailed explanation goes here
 
 %% Batch export
-if isa(dataset,'cell')
-    funlist=repelem({'NeuroAnalysis.IO.Export'},length(dataset));
-    vararginlist = arrayfun(@(i)[i,{exportpath,sourceformat,isparallel,callback},varargin],dataset,'UniformOutput',false);
+if isa(datafile,'cell')
+    funlist=repelem({'NeuroAnalysis.IO.Export'},length(datafile));
+    vararginlist = arrayfun(@(i)[i,{exportdir,sourceformat,isparallel,callback},varargin],datafile,'UniformOutput',false);
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     return;
 end
-%% Get dataset and export path
+%% Prepare
 result.status = false;
-result.source = '';
-if isa(dataset,'char')
-    result.source = dataset;
-    if ~strcmp(sourceformat,'Unknown')
-        dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],[{dataset},varargin]);
-        if ~isempty(dataset) && isfield(dataset,'status') && ~dataset.status
-            return;
-        end
-        filename = NeuroAnalysis.Base.filenamenodirext(dataset.source);
-        exportpath = fullfile(exportpath,[filename,'.mat']);
-    else
-        [~,filename,ext]=fileparts(dataset);
-        exportpath=fullfile(exportpath,[filename,ext]);
+result.source = datafile;
+dataset=[];
+if (~isa(datafile,'char'))
+    return;
+end
+if ~strcmp(sourceformat,'Unknown')
+    % Prepare dataset from file
+    dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],...
+        [{datafile},varargin]);
+    if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
+        return;
     end
+    % Get the export path
+    if ~isfield(dataset, 'filepath') || isempty(dataset.filepath)
+        dataset.filepath = fullfile(exportdir,[NeuroAnalysis.Base.filenamenodirext(datafile),'.mat']);
+    end
+    exportpath = dataset.filepath;
+else
+    % Unknown source, just prepare the path for the file to be copied
+    [~,filename,ext]=fileparts(datafile);
+    exportpath=fullfile(exportdir,[filename,ext]);
 end
 %% Save dataset
 disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
-    dataset.filepath = exportpath;
     save(exportpath,'dataset','-v7.3');
 else
-    copyfile(dataset,exportpath);
+    copyfile(datafile,exportpath);
 end
-result.status = true;
-result.source = filename;
 disp('Exporting Dataset:    Done.');
 %% Callback
 callbackfun = callback{1};
 callbackarg = callback{2};
+callbackresult = [];
 if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
     disp(['Applying Callback:    ',callbackfun,'    ...']);
-    NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
+    callbackresult = NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
     disp('Applying Callback:    Done.');
 end
-
+%% Prepare Metadata
+result.meta =[];
+if ~strcmp(sourceformat,'Unknown')
+    meta = NeuroAnalysis.Base.EvalFun(...
+        ['NeuroAnalysis.',sourceformat,'.PrepareMetadata'], ...
+        {dataset,callbackresult});
+    if (~isempty(meta))
+        result.meta = meta;
+    end
+end
+result.status = true;

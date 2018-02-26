@@ -7,11 +7,14 @@ tssidx=[];tesidx=[];
 for i=1:length(dinvalue)
     dts = dintime(i)-tss;
     dte = dintime(i)-tes;
-    if(abs(dts)<=msr && dinvalue(i)==msv)
-        tssidx=[tssidx,i];
-    end
-    if(abs(dte)<=msr && dinvalue(i) ~=msv)
-        tesidx=[tesidx,i];
+    if (dinvalue(i) == msv)
+        if(abs(dts)<=msr)
+            tssidx=[tssidx,i];
+        end
+    else
+        if(abs(dte)<=msr)
+            tesidx=[tesidx,i];
+        end
     end
     if dts>msr&&dte>msr
         break;

@@ -1,5 +1,5 @@
 function [ dataset ] = Prepare( filepath,varargin )
-%PREPARE Read Ripple data by Ripple neuroshare API, VLab data and prepare dataset
+%PREPARE Read Ripple data by Ripple neuroshare API, experimental data and prepare dataset
 %   Detailed explanation goes here
 
 p = inputParser;
@@ -17,28 +17,29 @@ analogrange = p.Results.analogrange;
 
 import NeuroAnalysis.Ripple.*
 %% Prepare all data files
-dataset = struct([]);
+dataset = [];
 [hfile] = fopen(filepath,'r');
 if hfile == -1
-    error(['Can not open file: ',filepath]);
+    warning(['Can not open file: ',filepath]);
+    return;
 end
-[basepath,filename,ext] = fileparts(filepath);
+[filedir,filename,ext] = fileparts(filepath);
 
 isrippledata= false;
-datafilepath = fullfile(basepath,filename);
+datafilepath = fullfile(filedir,filename);
 [ns_RESULT, hFile] = ns_OpenFile(datafilepath);
 if(strcmp(ns_RESULT,'ns_OK'))
     isrippledata = true;
 end
 
 isvlabdata = false;
-vlabfilepath =fullfile(basepath,[filename '.yaml']);
+vlabfilepath =fullfile(filedir,[filename '.yaml']);
 if(exist(vlabfilepath,'file')==2)
     isvlabdata = true;
 end
 
 isvisstimdata = false;
-visstimfilepath =fullfile(basepath,[filename '.mat']);
+visstimfilepath =fullfile(filedir,[filename '.mat']);
 if(exist(visstimfilepath,'file')==2)
     isvisstimdata = true;
 end
@@ -117,8 +118,12 @@ if(isrippledata)
         end
     end
     
-    dataset=struct;
     fdatatype = fieldnames(EntityID);
+    if (isempty(fdatatype))
+        return;
+    end
+    
+    dataset=struct;
     for f=1:length(fdatatype)
         switch fdatatype{f}
             case 'Spike'
@@ -205,7 +210,7 @@ end
 ns_RESULT = ns_CloseFile(hFile);
 disp('Reading Ripple Files:    Done.');
 %% Prepare Ripple data
-disp(['Preparing Ripple Files:    ',datafilepath,'.*    ...']);
+disp('Preparing Ripple Data    ...');
     function y = dinch(x)
         switch x
             case 'Parallel'
@@ -236,17 +241,23 @@ if ~isempty(dataset)
         end
     end
 end
-disp('Preparing Ripple Files:    Done.');
-%% Prepare experimental data
-if(isvlabdata && ~isempty(dataset))
-    vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath,dataset);
-    if ~isempty(vlabdataset)
-        dataset.ex = vlabdataset.ex;
+disp('Preparing Ripple Data:    Done.');
+%% Prepare corresponding experimental data
+if(~isempty(dataset))
+    if(isvlabdata)
+        vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath,dataset);
+        if ~isempty(vlabdataset)
+            dataset.ex = vlabdataset.ex;
+        end
+    elseif(isvisstimdata)
+        visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,dataset);
+        if ~isempty(visstimdataset)
+            dataset.ex = visstimdataset;
+        end
     end
-elseif(isvisstimdata && ~isempty(dataset))
-    visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath);
-    if ~isempty(visstimdataset)
-        dataset.ex = visstimdataset.ex;
+    % Ripple data is useless without experimental data
+    if ~isfield(dataset, 'ex') || isempty(dataset.ex)
+        dataset = [];
     end
 end
 
