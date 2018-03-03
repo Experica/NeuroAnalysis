@@ -110,6 +110,11 @@ dataset.imagehead.user = fread(hfile,224,'*char');
 dataset.imagehead.comment = fread(hfile,256,'*char');
 %% Prepare block header
 dataset.imagehead.listofstimuli = int32(str2double(strsplit(dataset.imagehead.listofstimuli')));
+%% Prepare experimental data
+[~,fname,~]=fileparts(filepath);
+ts = regexp(fname,'^([A-Za-z0-9]+)_(E[0-9]+)B[0-9]+','tokens','once');
+dataset.Subject_ID=ts{1};
+dataset.RecordSession=ts{2};
 %% Read block
 switch dataset.imagehead.datatype
     case 11 % DAT_UCHAR

@@ -34,8 +34,7 @@ classdef MetaTable < handle
             % Search for duplicate old rows
             matchindex =  [];
             searchtemplate = NeuroAnalysis.Base.getstructfields(test,...
-                {'sourceformat', 'Subject_ID', 'RecordSession', ...
-                'RecordSite', 'ID'});
+                {'Subject_ID', 'RecordSession'});
             keys = fieldnames(searchtemplate);
             values = struct2cell(searchtemplate);
             roughmatchindex = obj.iquery(keys, values);
@@ -82,6 +81,27 @@ classdef MetaTable < handle
             end
             mt = NeuroAnalysis.IO.MetaTable();
             mt.Tests = obj.Tests(matchindex);
+        end
+        
+        function index = iquery(obj, keys, values,range)
+            %IQUERY query for matching tests, return indices
+            
+            if nargin <4
+                range=1:length(obj.Tests);
+            else
+                range(range<1 & range>length(obj.Tests))=[];
+            end
+            
+            index = [];
+            for i = range
+                ismatch = true;
+                for j = 1:length(keys)
+                    ismatch = ismatch & isequal(obj.Tests(i).(keys{j}), values{j});
+                end
+                if ismatch
+                    index=[index,i];
+                end
+            end
         end
         
         function export(obj, filepath)
@@ -138,26 +158,11 @@ classdef MetaTable < handle
             obj.Tests(missingindex)=[];
             disp('Validating metadata:    Done.');
         end
+        
     end
     
     methods (Access = private)
         
-        function index = iquery(obj, keys, values)
-            %IQUERY Internal query for matching tests, return indices
-            
-            index = [];
-            for i = 1:length(obj.Tests)
-                ismatch = true;
-                for j = 1:length(keys)
-                    ismatch = ismatch & isequal(obj.Tests(i).(keys{j}), values{j});
-                end
-                if ismatch
-                    index=[index,i];
-                end
-            end
-        end
-        
     end
     
 end
-

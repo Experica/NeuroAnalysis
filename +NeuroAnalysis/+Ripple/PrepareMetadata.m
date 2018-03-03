@@ -8,6 +8,15 @@ exmeta = [];
 if (~isempty(dataset) && isfield(dataset,'ex'))
     exmeta = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',dataset.ex.sourceformat,'.PrepareMetadata'], ...
         {dataset,callbackresult});
+    if isfield(exmeta,'sourceformat')
+        exmeta = rmfield(exmeta,'sourceformat');
+    end
+    if isfield(exmeta,'filename')
+        exmeta = rmfield(exmeta,'filename');
+    end
+    if isfield(exmeta,'files')
+        exmeta = rmfield(exmeta,'files');
+    end
 end
 %% Prepare Ripple metadata
 ripplemeta = [];
