@@ -5,6 +5,8 @@ function [v] = tryparseparam(name,v)
 if isa(v,'char')
     if (startsWith(v,'(') && endsWith(v,')')) || (startsWith(v,'[') && endsWith(v,']'))
         v=str2double(strsplit(v(2:end-1),','));
+    elseif contains(v,' ')
+        v=str2double(strsplit(v,' '));
     end
 end
 

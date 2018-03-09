@@ -18,19 +18,11 @@ ex.CondTest.SufICIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SU
 
 % Try parse Environment Parameter
 if ~isempty(ex.EnvParam)
-    envparamnames = fieldnames(ex.EnvParam);
-    for i=1:length(envparamnames)
-        p = envparamnames{i};
-        ex.EnvParam.(p) = tryparseparam(p,ex.EnvParam.(p));
-    end
+    ex.EnvParam = tryparseparamstruct(ex.EnvParam);
 end
 % Try parse Experiment Parameter
 if ~isempty(ex.Param)
-    paramnames = fieldnames(ex.Param);
-    for i=1:length(paramnames)
-        p = paramnames{i};
-        ex.Param.(p) = tryparseparam(p,ex.Param.(p));
-    end
+    ex.Param = tryparseparamstruct(ex.Param);
 end
 
 isenvori=containsparam(ex.EnvParam,'Ori');
