@@ -2,6 +2,10 @@ function [param] = standardizeParams(param, standard)
 %STANDARDIZEPARAMS Summary of this function goes here
 %   Detailed explanation goes here
 
+if isempty(param)
+    return;
+end
+
 import NeuroAnalysis.Base.*
 
 % Iterate through params and make any necessary conversions
@@ -40,6 +44,10 @@ end
 function [v] = standardizeType(v, type)
 % STANDARDIZETYPE convert to type if possible
     
+if iscell(v)
+    v = cellfun(@(x)standardizeType(x,type), v, 'UniformOutput', false);
+end
+
 switch type
     case 'double'
         if ischar(v)
