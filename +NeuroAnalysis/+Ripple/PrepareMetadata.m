@@ -8,6 +8,9 @@ exmeta = [];
 if (~isempty(dataset) && isfield(dataset,'ex'))
     exmeta = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',dataset.ex.sourceformat,'.PrepareMetadata'], ...
         {dataset,callbackresult});
+    if isfield(exmeta,'status') && ~exmeta.status
+        exmeta = [];
+    end
     if isfield(exmeta,'sourceformat')
         exmeta = rmfield(exmeta,'sourceformat');
     end

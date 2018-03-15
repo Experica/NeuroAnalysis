@@ -18,6 +18,8 @@ if hfile == -1
     warning(['Can not open file: ',filepath]);
     return;
 end
+fclose(hfile);
+d = dir(filepath);
 %% Read data
 disp(['Reading VLab File:    ',filepath,'    ...']);
 ex = yaml.ReadYaml(filepath);
@@ -47,9 +49,11 @@ if ~isempty(ex)
     vlabdataset.ex = NeuroAnalysis.Base.StandardizeEx(vlabdataset.ex);
     vlabdataset.ex.source = filepath;
     vlabdataset.ex.sourceformat = 'VLab';
+    vlabdataset.ex.date = d.datenum;
     
     vlabdataset.source = filepath;
     vlabdataset.sourceformat = 'VLab';
+    
 end
 disp('Preparing VLab Data:    Done.');
 end

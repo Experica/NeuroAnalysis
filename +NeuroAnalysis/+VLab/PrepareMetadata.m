@@ -7,7 +7,7 @@ if (isempty(dataset) || ~isfield(dataset,'ex'))
     return;
 end
 
-fields = {'ID', 'Subject_ID','RecordSite','RecordSession','sourceformat'};
+fields = {'ID', 'Subject_ID','RecordSite','RecordSession','sourceformat','date'};
 meta = NeuroAnalysis.Base.getstructfields(dataset.ex,fields);
 
 meta.files={dataset.filepath};

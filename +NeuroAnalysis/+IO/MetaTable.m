@@ -74,7 +74,7 @@ classdef MetaTable < handle
             end
             keys = varargin(1:2:end);
             values = varargin(2:2:end);
-            matchindex = obj.iquery(keys, values);
+            matchindex = obj.iquery(keys, values, [], true);
             if isempty(matchindex)
                 warning('No Matching Metadata Found. ');
                 return;
@@ -83,25 +83,43 @@ classdef MetaTable < handle
             mt.Tests = obj.Tests(matchindex);
         end
         
-        function index = iquery(obj, keys, values,range)
+        function index = iquery(obj, keys, values, range, dosort)
             %IQUERY query for matching tests, return indices
             
-            if nargin <4
+           
+            if nargin < 4 || isempty(range)
                 range=1:length(obj.Tests);
             else
                 range(range<1 & range>length(obj.Tests))=[];
             end
+            if nargin < 5
+                dosort=false;
+            end
             
             index = [];
+            dates = [];
             for i = range
                 ismatch = true;
                 for j = 1:length(keys)
                     ismatch = ismatch & isequal(obj.Tests(i).(keys{j}), values{j});
                 end
                 if ismatch
-                    index=[index,i];
+                    index=[index;i];
+                    if dosort && isfield(obj.Tests, 'date') && ...
+                            ~isempty(obj.Tests(i).date)
+                        dates=[dates;obj.Tests(i).date];
+                    else
+                        dates=[dates;NaN];
+                    end
                 end
             end
+            
+            % Sort by date
+            if dosort
+                sorted = sortrows([dates, index]);
+                index = sorted(:,2);
+            end
+            
         end
         
         function export(obj, filepath)
