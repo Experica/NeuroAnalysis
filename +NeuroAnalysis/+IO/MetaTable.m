@@ -139,13 +139,14 @@ classdef MetaTable < handle
                 verbose=false;
             end
             
-            missingtest=[];
             disp('Validating metadata:   ...');
             if isempty(obj.Tests)
                 disp('Validating metadata:   Empty.');
                 return;
             end
             
+            % Check for missing files
+            missingtest=[];
             missingindex=[];
             for t = 1:length(obj.Tests)
                 test = obj.Tests(t);
@@ -174,6 +175,21 @@ classdef MetaTable < handle
                 end
             end
             obj.Tests(missingindex)=[];
+            
+            % Check for empty fields
+            fields = fieldnames(obj.Tests);
+            emptyfields = {};
+            for f = 1:length(fields)
+                if all(cellfun(@isempty, {obj.Tests.(fields{f})}))
+                    if verbose
+                        disp(['Validating metadata:    Empty column: ',...
+                            fields{f},' is removed.']);
+                    end
+                    emptyfields = [emptyfields fields(f)];
+                end
+            end
+            obj.Tests = rmfield(obj.Tests, emptyfields);
+            
             disp('Validating metadata:    Done.');
         end
         
