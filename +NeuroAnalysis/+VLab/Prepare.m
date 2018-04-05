@@ -13,12 +13,10 @@ dataset = p.Results.dataset;
 import NeuroAnalysis.VLab.*
 %% check file
 vlabdataset = [];
-[hfile] = fopen(filepath,'r');
-if hfile == -1
-    warning(['Can not open file: ',filepath]);
+if(exist(filepath,'file')~=2)
+    warning(['File do not exist: ',filepath]);
     return;
 end
-fclose(hfile);
 d = dir(filepath);
 %% Read data
 disp(['Reading VLab File:    ',filepath,'    ...']);

@@ -86,7 +86,7 @@ classdef MetaTable < handle
         function index = iquery(obj, keys, values, range, dosort)
             %IQUERY query for matching tests, return indices
             
-           
+            
             if nargin < 4 || isempty(range)
                 range=1:length(obj.Tests);
             else
@@ -140,6 +140,7 @@ classdef MetaTable < handle
                 verbose=false;
             end
             
+            missingtest=[];
             disp('Validating metadata:   ...');
             if isempty(obj.Tests)
                 disp('Validating metadata:   Empty.');
@@ -147,7 +148,6 @@ classdef MetaTable < handle
             end
             
             % Check for missing files
-            missingtest=[];
             missingindex=[];
             for t = 1:length(obj.Tests)
                 test = obj.Tests(t);
