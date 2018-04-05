@@ -4,9 +4,15 @@ function [v] = tryparseparam(name,v)
 
 if isa(v,'char')
     if (startsWith(v,'(') && endsWith(v,')')) || (startsWith(v,'[') && endsWith(v,']'))
-        v=str2double(strsplit(v(2:end-1),','));
+        try
+            v=str2double(strsplit(v(2:end-1),','));
+        catch
+        end
     elseif contains(v,' ')
-        v=str2double(strsplit(v,' '));
+        try
+            v=str2double(strsplit(v,' '));
+        catch
+        end
     end
 end
 

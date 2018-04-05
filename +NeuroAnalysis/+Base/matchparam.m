@@ -8,9 +8,9 @@ end
 
 ismatch = false;
 if ignorecase && any((strcmpi(param, str)) || ...
-        any(startsWith(param, [str, '@'], 'IgnoreCase', true)))
+        any(startsWith(param, [str, '0x40'], 'IgnoreCase', true)))
     ismatch = true;
-elseif any(strcmp(param, str)) || any(startsWith(param,[str, '@']))
+elseif any(strcmp(param, str)) || any(startsWith(param,[str, '0x40']))
     ismatch = true;
 end
 
