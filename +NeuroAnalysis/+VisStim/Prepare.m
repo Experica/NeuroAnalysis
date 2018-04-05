@@ -16,6 +16,7 @@ visstimdataset = struct([]);
 if ~exist(filepath, 'file')
     error(['Can not open file: ',filepath]);
 end
+d = dir(filepath);
 %% Read data
 disp(['Reading VisStim File:    ',filepath,'    ...']);
 ex = struct;
@@ -47,6 +48,7 @@ ex = NeuroAnalysis.VisStim.adjustStimTimes(ex,...
 ex = NeuroAnalysis.Base.StandardizeEx(ex);
 % Organize into dataset
 visstimdataset = ex;
+visstimdataset.date = d.datenum;
 
 disp('Preparing VisStim File:    Done.');
 

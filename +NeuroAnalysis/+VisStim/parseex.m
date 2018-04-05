@@ -11,9 +11,9 @@ ex.EnvParam = [];
 
 % Monitor resolution, size, etc.
 if isfield(ex.raw, 'MonRes')
-    ex.EnvParam.MonitorResolution = reshape(sscanf(ex.raw.MonRes,'%f x %f'), 1, 2);
+    ex.EnvParam.ScreenResolution = reshape(sscanf(ex.raw.MonRes,'%f x %f'), 1, 2);
 else
-    ex.EnvParam.MonitorResolution = [NaN NaN];
+    ex.EnvParam.ScreenResolution = [NaN NaN];
 end
 
 if isfield(ex.raw, 'MonitorDistance')
@@ -22,18 +22,21 @@ else
     ex.EnvParam.ScreenToEye = NaN;
 end
 
-if isfield(ex.raw, 'MonSize') && ischar(ex.raw.MonSize)
-    ex.EnvParam.MonitorDegrees = reshape(sscanf(ex.raw.MonSize,'%f x %f'), 1, 2);
-    ppd = mean(ex.EnvParam.MonitorResolution ./ ex.EnvParam.MonitorDegrees);
-    ppcm = ppd/(2*ex.EnvParam.ScreenToEye*tand(0.5));
-    ex.EnvParam.MonitorDiagonal = round(sqrt((...
-        ex.EnvParam.MonitorResolution(1)^2 + ...
-        ex.EnvParam.MonitorResolution(2)^2))/ppcm);
-elseif isfield(ex.raw, 'MonSize')
-    ex.EnvParam.MonitorDiagonal = ex.raw.MonSize*2.54; % convert to cm
+if isfield(ex.raw, 'MonSize') && isnumeric(ex.raw.MonSize)
+    ex.EnvParam.ScreenDiagonal = ex.raw.MonSize*2.54; % convert to cm
+elseif isfield(ex.raw, 'MonitorSize') && isnumeric(ex.raw.MonitorSize)
+    ex.EnvParam.ScreenDiagonal = ex.raw.MonitorSize*2.54; % convert to cm
 else
-    ex.EnvParam.MonitorDiagonal = NaN;
+    ex.EnvParam.ScreenDiagonal = NaN;
 end
+
+ex.EnvParam.ScreenAspect = ex.EnvParam.ScreenResolution(1)/...
+    ex.EnvParam.ScreenResolution(2);
+ex.EnvParam.ScreenHalfHeight = sqrt(ex.EnvParam.ScreenDiagonal^2/...
+    (1 + ex.EnvParam.ScreenAspect^2))/2;
+deg = atand(ex.EnvParam.ScreenHalfHeight/ex.EnvParam.ScreenToEye);
+ex.EnvParam.ScreenDegrees = [deg*ex.EnvParam.ScreenAspect*2, ...
+    deg*2];
 
 if isfield(ex.raw, 'Latency')
     ex.Latency = ex.raw.Latency;
@@ -67,7 +70,7 @@ ex.EnvParam.Position = Position;
 
 % BG Color
 if isfield(ex.raw, 'blanks')
-    ex.EnvParam.BGColor = [repmat(ex.raw.blanks/255, 1, 3) 1];
+    ex.EnvParam.BGColor = [repmat(ex.raw.blanks, 1, 3) 1];
 else
     ex.EnvParam.BGColor = [0.5 0.5 0.5 1];
 end
@@ -147,8 +150,9 @@ ex.SufIBI = 0;
 
 % Fill out Data table
 data = ex.raw.data;
-CondTest = [];
-CondTestCond = [];
+CondTest = struct;
+% Possible factors
+Factors = struct;
 switch ex.ID
     case {'velocity', 'VelocityConstantCycles', ...
             'VelocityConstantCyclesBar'}
@@ -156,82 +160,92 @@ switch ex.ID
         CondTest.StimOff = data(:,2) + data(:,8);
         CondTest.CondRepeat = data(:,9);
         CondTest.CondIndex = data(:,10);
-        CondTestCond.Velocity = data(:,3);
+        Factors.Velocity = data(:,3);
+        Factors.nDots = data(:,4);
+        Factors.Diameter = data(:,5);
+        Factors.Ori = data(:,6);
+        Factors.Contrast = data(:,7);
     case 'Looming'
         CondTest.StimOn = data(:,2);
         CondTest.StimOff = data(:,2) + data(:,5);
         CondTest.CondRepeat = data(:,6);
         CondTest.CondIndex = data(:,7);
-        CondTestCond.Velocity = data(:,3);
+        Factors.Velocity = data(:,3);
+        Factors.Contrast = data(:,4);
     case 'LatencyTest'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,4);
         CondTest.CondRepeat = data(:,3);
         CondTest.CondIndex = ones(size(data,1),1);
-        CondTestCond.On = ones(size(data,1),1);
+        Factors.Visible = ones(size(data,1),1);
     case 'LaserGratings'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,2);
         CondTest.CondRepeat = data(:,4);
         CondTest.CondIndex = data(:,5);
-        CondTestCond.On = ones(size(data,1),1);
+        Factors.Visible = ones(size(data,1),1);
     case 'LaserON'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,2);
         CondTest.CondRepeat = data(:,4);
         CondTest.CondIndex = ones(size(data,1),1);
-        CondTestCond.On = ones(size(data,1),1);
+        Factors.Visible = ones(size(data,1),1);
     case 'PatternMotion'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,8);
         CondTest.CondRepeat = data(:,9);
         CondTest.CondIndex = data(:,11);
-        CondTestCond.Orientation = data(:,6);
+        Factors.Orientation = data(:,6);
+        Factors.Diameter = data(:,5);
+        Factors.Ori = data(:,6);
+        Factors.Contrast = data(:,7);
     case 'RFmap'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + 0.05;
         %CondTest.CondRepeat = data(:,9);
         CondTest.CondIndex = data(:,2);
-        CondTestCond.X_Position = data(:,3);
-        CondTestCond.Y_Position = data(:,4);
+        Factors.Position = [data(:,3), data(:,4), zeros(size(data,1),1)];
+        Factors.Diameter = data(:,5);
     case 'CatRFdetailed'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + ex.CondDur;
         %CondTest.CondRepeat = data(:,9);
         CondTest.CondIndex = data(:,2);
-        CondTestCond.X_Position = data(:,4);
-        CondTestCond.Y_Position = data(:,5);
-        CondTestCond.Color = data(:,3);
+        Factors.Position = [data(:,4), data(:,5), zeros(size(data,1),1)];
+        Factors.Color = data(:,3);
     case {'CatRFfast10x10'}
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,6);
         CondTest.CondRepeat = data(:,7);
         CondTest.CondIndex = data(:,2);
-        CondTestCond.X_Position = data(:,4);
-        CondTestCond.Y_Position = data(:,5);
-        CondTestCond.Color = data(:,3);
+        Factors.Position = [data(:,4), data(:,5), zeros(size(data,1),1)];
+        Factors.Color = data(:,3);
+        Factors.SpatialFreq = data(:,8);
+        Factors.TemporalFreq = data(:,9);
+        Factors.Ori = data(:,10);
     case {'CatRFfast'} % 'CatRFfast' is broken, condition numbers are wrong
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,6);
         CondTest.CondRepeat = data(:,7);
         % CondTest.CondIndex = data(:,2);
-        CondTestCond.X_Position = data(:,4);
-        CondTestCond.Y_Position = data(:,5);
-        CondTestCond.Color = data(:,3);
+        Factors.Position = [data(:,4), data(:,5), zeros(size(data,1),1)];
+        Factors.Color = data(:,3);
+        Factors.SpatialFreq = data(:,8);
+        Factors.TemporalFreq = data(:,9);
+        Factors.Ori = data(:,10);
     case {'NaturalImages', 'NaturalVideos'}
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,4);
         CondTest.CondRepeat = data(:,6);
         CondTest.CondIndex = data(:,2);
-        CondTestCond.Image = data(:,2);
+        Factors.Image = data(:,2);
     case {'WholeScreenMapLP'}
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + data(:,6);
         CondTest.CondRepeat = data(:,7);
         CondTest.CondIndex = data(:,2);
-        CondTestCond.X_Position = data(:,4);
-        CondTestCond.Y_Position = data(:,5);
-        CondTestCond.Color = data(:,3);
+        Factors.Position = [data(:,4), data(:,5), zeros(size(data,1),1)];
+        Factors.Color = data(:,3);
     otherwise
 
         % StimTimes
@@ -244,8 +258,6 @@ switch ex.ID
         CondTest.StimOn = data(:,2);
         CondTest.StimOff = data(:,2) + data(:,8);
         
-        % Possible factors
-        Factors = [];
         Factors.SpatialFreq = data(:,3);
         Factors.TemporalFreq = data(:,4);
         Factors.Diameter = data(:,5);
@@ -257,59 +269,62 @@ switch ex.ID
             Factors.Velocity = data(:,4)./data(:,3);
         end
         
-        % Split factors to env params and conditions
-        factorNames = fieldnames(Factors);
-        for f=1:length(factorNames)
-            ufv = unique(Factors.(factorNames{f}));
-            if length(ufv) == 1
-                ex.EnvParam.(factorNames{f}) = ufv;
-            else
-                CondTestCond.(factorNames{f}) = Factors.(factorNames{f});
-            end
-        end
-
         % Trial no
         if size(data,2) >= 9
             CondTest.CondRepeat = data(:,9);
         end
 end
 
-if isempty(CondTestCond)
-    warning(['No conditions found, unsupported log file: ', ex.source]);
-    ex = [];
-    return;
-end
-
-% Generate new condition numbers - old ones are sometimes wrong
-[Conditions, ~, conditionNo] = unique(struct2table(CondTestCond));
-CondTest.CondIndex = conditionNo;
-ex.Cond = table2struct(Conditions, 'ToScalar', true);
-
-ex.CondTest = CondTest;
-ex.CondTestCond = CondTestCond;
-
 % Trim CondTest
-ctnames = fieldnames(ex.CondTest);
-nct = min(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
+ctnames = fieldnames(CondTest);
+nct = min(cellfun(@(x)length(CondTest.(x)),ctnames));
 for i=1:length(ctnames)
-    ex.CondTest.(ctnames{i}) = ex.CondTest.(ctnames{i})(1:nct);
+    CondTest.(ctnames{i}) = CondTest.(ctnames{i})(1:nct);
 end
 
 % Generate condition repeat numbers if missing
-if ~isfield(ex.CondTest, 'CondRepeat')
-    repeats = ones(size(unique(ex.CondTest.CondIndex),1),1);
-    for i = 1:length(ex.CondTest.CondIndex)
-        condIndex = ex.CondTest.CondIndex(i);
-        ex.CondTest.CondRepeat(i) = repeats(condIndex);
-        repeats(ex.CondTest.CondIndex(i)) = repeats(ex.CondTest.CondIndex(i)) + 1;
+if ~isfield(CondTest, 'CondRepeat')
+    repeats = ones(size(unique(CondTest.CondIndex),1),1);
+    for i = 1:length(CondTest.CondIndex)
+        condIndex = CondTest.CondIndex(i);
+        CondTest.CondRepeat(i) = repeats(condIndex);
+        repeats(CondTest.CondIndex(i)) = repeats(CondTest.CondIndex(i)) + 1;
     end
     ex.CondRepeat = min(repeats) - 1;
 else
     ex.CondRepeat = max(CondTest.CondRepeat);
 end
 
+% Split factors to env params and conditions
+CondTestCond = [];
+factorNames = fieldnames(Factors);
+for f=1:length(factorNames)
+    ufv = unique(Factors.(factorNames{f}));
+    if length(ufv) == 1
+        ex.EnvParam.(factorNames{f}) = ufv;
+    else
+        CondTestCond.(factorNames{f}) = Factors.(factorNames{f});
+    end
+end
+
+Cond = [];
+if ~isempty(CondTestCond)
+    % Generate new condition numbers - old ones are sometimes wrong
+    [Conditions, ~, conditionNo] = unique(struct2table(CondTestCond));
+    CondTest.CondIndex = conditionNo;
+    Cond = table2struct(Conditions, 'ToScalar', true);
+
+    % Convert Cond fields to cell arrays
+    CondTestCond = structfun(@(x)num2cell(x,2), CondTestCond, 'UniformOutput', false);
+    Cond = structfun(@(x)num2cell(x,2), Cond, 'UniformOutput', false);
+end
+
 % Convert CondIndex to integers
-ex.CondTest.CondIndex = int32(ex.CondTest.CondIndex);
-ex.CondTest.CondRepeat = int32(ex.CondTest.CondRepeat);
+CondTest.CondIndex = int32(CondTest.CondIndex);
+CondTest.CondRepeat = int32(CondTest.CondRepeat);
+
+ex.Cond = Cond;
+ex.CondTest = CondTest;
+ex.CondTestCond = CondTestCond;
 
 end

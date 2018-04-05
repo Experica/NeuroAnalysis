@@ -18,11 +18,6 @@ analogrange = p.Results.analogrange;
 import NeuroAnalysis.Ripple.*
 %% Prepare all data files
 dataset = [];
-[hfile] = fopen(filepath,'r');
-if hfile == -1
-    warning(['Can not open file: ',filepath]);
-    return;
-end
 [filedir,filename,ext] = fileparts(filepath);
 
 isrippledata= false;
@@ -248,6 +243,7 @@ if(~isempty(dataset))
         vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath,dataset);
         if ~isempty(vlabdataset)
             dataset.ex = vlabdataset.ex;
+            dataset.date
         end
     elseif(isvisstimdata)
         visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,dataset);
