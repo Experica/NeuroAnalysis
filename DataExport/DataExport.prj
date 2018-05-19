@@ -8,11 +8,11 @@
       <file>${PROJECT_ROOT}\DataExport_resources\icon_24.png</file>
       <file>${PROJECT_ROOT}\DataExport_resources\icon_16.png</file>
     </param.icons>
-    <param.version>1.3</param.version>
+    <param.version>1.4</param.version>
     <param.authnamewatermark>Li Alex Zhang and Contributors</param.authnamewatermark>
-    <param.email />
+    <param.email>vlabsys@gmail.com</param.email>
     <param.company>VLAB</param.company>
-    <param.summary>Export Signal and Experimental Dataset as Matlab MAT File</param.summary>
+    <param.summary>Export Signal and Experimental Dataset, Spike Sorting, Analysis and Register Metadata.</param.summary>
     <param.description />
     <param.screenshot>${PROJECT_ROOT}\noun_dataexport_cc.png</param.screenshot>
     <param.guid />
@@ -35,7 +35,7 @@
     <param.web.mcr.name>DataExport_Installer_web</param.web.mcr.name>
     <param.package.mcr.name>DataExport_Installer_mcr</param.package.mcr.name>
     <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
-    <param.windows.command.prompt>false</param.windows.command.prompt>
+    <param.windows.command.prompt>true</param.windows.command.prompt>
     <param.create.log>true</param.create.log>
     <param.log.file>DataExport_Log.txt</param.log.file>
     <param.native.matlab>false</param.native.matlab>
@@ -43,7 +43,6 @@
     <param.example />
     <param.help.text />
     <unset>
-      <param.email />
       <param.description />
       <param.guid />
       <param.installpath.string />
@@ -62,6 +61,7 @@
       <param.package.mcr />
       <param.no.mcr />
       <param.no.mcr.name />
+      <param.windows.command.prompt />
       <param.native.matlab />
       <param.checkbox />
       <param.example />
