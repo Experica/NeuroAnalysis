@@ -132,14 +132,19 @@ classdef MetaTable < handle
             disp('Saving metadata:    Done.');
         end
         
-        function [missingtest] = validate(obj, verbose)
-            %VALIDATE ensure metatable contains valid data files
-            % Returns a struct array of tests where invalid data files appeared
+        function [missingtest] = validate(obj, dataroot,verbose)
+            %VALIDATE ensure metatable contains valid data files relative to DataRoot directory.
+            %Returns a struct array of tests where invalid data files appeared
             
-            if nargin ==1
+            if nargin ==2
                 verbose=false;
             end
+            qoption.Default ='No(All)';
+            qoption.Interpreter = 'none';
+            deletemissingfile = false;
+            forall = false;
             
+            dr = java.io.File(dataroot).toPath();
             missingtest=[];
             disp('Validating metadata:   ...');
             if isempty(obj.Tests)
@@ -154,19 +159,44 @@ classdef MetaTable < handle
                 missingfiles = {};
                 
                 if ~isempty(test.files)
-                    for i = 1:length(test.files)
-                        if ~exist(test.files{i},'file')
+                    for i = length(test.files):-1:1
+                        tf = java.io.File(test.files{i});
+                        if ~tf.isAbsolute
+                            p=fullfile(dataroot,test.files{i});
+                        else
+                            p=test.files{i};
+                        end
+                        if ~exist(p,'file')
                             if verbose
-                                disp(['Validating metadata:    Missing file: ',...
-                                    test.files{i},' is removed.']);
+                                disp(['Validating metadata:    Missing File: ',p]);
                             end
-                            missingfiles = [missingfiles test.files(i)];
-                            test.files(i)=[];
-                            obj.Tests(t).files(i)=[];
+                            missingfiles = [missingfiles p];
+                            
+                            if ~forall
+                                choice = questdlg(['Remove Missing File?\n', p],'Missing File Action',...
+                                    'Yes','Yes(All)','No','No(All)',qoption);
+                                switch choice
+                                    case 'Yes'
+                                        deletemissingfile = true;
+                                    case 'Yes(All)'
+                                        deletemissingfile = true;
+                                        forall = true;
+                                    case 'No'
+                                        deletemissingfile = false;
+                                    case 'No(All)'
+                                        deletemissingfile = false;
+                                        forall = true;
+                                end
+                            end
+                            if deletemissingfile
+                                obj.Tests(t).files(i)=[];
+                            end
+                        else
+                            obj.Tests(t).files{i}= fullfile('./', char(dr.relativize(java.io.File(p).toPath())));
                         end
                     end
                 end
-                if isempty(test.files)
+                if isempty(obj.Tests(t).files)
                     missingindex=[missingindex;t];
                     test.missingfiles= missingfiles;
                     missingtest=[missingtest;test];
@@ -183,8 +213,8 @@ classdef MetaTable < handle
             for f = 1:length(fields)
                 if all(cellfun(@isempty, {obj.Tests.(fields{f})}))
                     if verbose
-                        disp(['Validating metadata:    Empty column: ',...
-                            fields{f},' is removed.']);
+                        disp(['Validating metadata:    Empty Column: ',...
+                            fields{f},' will be removed.']);
                     end
                     emptyfields = [emptyfields fields(f)];
                 end
@@ -193,10 +223,6 @@ classdef MetaTable < handle
             
             disp('Validating metadata:    Done.');
         end
-        
-    end
-    
-    methods (Access = private)
         
     end
     
