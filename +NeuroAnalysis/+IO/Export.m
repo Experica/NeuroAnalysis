@@ -36,7 +36,7 @@ end
 %% Save dataset
 disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
-    save(exportpath,'dataset','-v7.3');
+    save(exportpath,'-struct','dataset','-v7.3');
 else
     copyfile(datafile,exportpath);
 end

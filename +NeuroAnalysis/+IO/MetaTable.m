@@ -139,8 +139,6 @@ classdef MetaTable < handle
             if nargin ==2
                 verbose=false;
             end
-            qoption.Default ='No(All)';
-            qoption.Interpreter = 'none';
             deletemissingfile = false;
             forall = false;
             
@@ -173,8 +171,8 @@ classdef MetaTable < handle
                             missingfiles = [missingfiles p];
                             
                             if ~forall
-                                choice = questdlg(['Remove Missing File?\n', p],'Missing File Action',...
-                                    'Yes','Yes(All)','No','No(All)',qoption);
+                                choice = questdlg(['Remove Missing File: ', p,' ?'],'Missing File Action',...
+                                    'No(All)','No','Yes','No(All)');
                                 switch choice
                                     case 'Yes'
                                         deletemissingfile = true;

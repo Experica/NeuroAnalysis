@@ -18,11 +18,9 @@ if ~isa(datafile,'char') || exist(datafile, 'file') ~= 2
     return;
 end
 disp(['Reading Dataset:    ',datafile,'    ...']);
-loadresult = load(datafile);
+dataset = NeuroAnalysis.IO.loaddataset(datafile,{'any data fields not needed for metadata collection.'});
 disp('Reading Dataset:    Done.');
-if (~isempty(loadresult) && isfield(loadresult,'dataset'))
-    dataset = loadresult.dataset;
-else
+if isempty(dataset)
     return;
 end
 %% Extract metadata
