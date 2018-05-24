@@ -24,6 +24,8 @@ classdef MetaTable < handle
         function addRow(obj, test)
             %ADDROW Add a test
             
+            % Add UUID for test
+            test.UUID = char(java.util.UUID.randomUUID());
             % Add new fields to Tests struct array
             newfields = setdiff(fieldnames(test), fieldnames(obj.Tests));
             emptyColumn = cell(length(obj.Tests),1);
