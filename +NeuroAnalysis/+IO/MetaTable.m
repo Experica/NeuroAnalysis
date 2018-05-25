@@ -47,11 +47,19 @@ classdef MetaTable < handle
             end
             
             if ~isempty(matchindex)
-                % Merge old row and test
+                % Keep old UUID
+                for i = 1:length(matchindex)
+                    uuid = obj.Tests(matchindex(i)).UUID;
+                    if ~isempty(uuid)
+                        test.UUID=uuid;
+                        break;
+                    end
+                end
+                % Merge new test and duplicate
                 test= NeuroAnalysis.Base.EvalFun(...
                     ['NeuroAnalysis.',test.sourceformat,'.MergeMetadata'],...
-                    {obj, test,matchindex});
-                % Delete old row
+                    {obj, test,matchindex(1)});
+                % Delete duplicate rows
                 obj.Tests(matchindex)=[];
             else
                 % Add missing fields to the test
@@ -100,7 +108,8 @@ classdef MetaTable < handle
             
             index = [];
             dates = [];
-            for i = range
+            for ii = 1:length(range)
+                i=range(ii);
                 ismatch = true;
                 for j = 1:length(keys)
                     ismatch = ismatch & isequal(obj.Tests(i).(keys{j}), values{j});
