@@ -1,4 +1,4 @@
-function [on,off] = parsecondonoff(ex,dataset,MarkDCh,msr)
+function [on,off] = parsecondonoff(ex,dataset,CondDCh,MarkDCh,msr)
 %PARSECONDONOFF Try to get the most accurate timing of Condition On/Off
 %   Detailed explanation goes here
 
@@ -10,25 +10,41 @@ if ~isempty(dataset) && isfield(dataset,'digital')
     isdinmark = ~isempty(markdchidx);
     isdinmarkerror=true;
     if isdinmark
-        dintime = dataset.digital(markdchidx).time;
-        dinvalue = dataset.digital(markdchidx).data;
-        if vlabconfig.NMarkPerCond*nct == length(dintime) && all(diff(dinvalue))
+        dinmarktime = dataset.digital(markdchidx).time;
+        dinmarkvalue = dataset.digital(markdchidx).data;
+        if vlabconfig.NMarkPerCond*nct == length(dinmarktime) && all(diff(dinmarkvalue))
             isdinmarkerror = false;
+        end
+    end
+    conddchidx = find(arrayfun(@(x)x.channel==CondDCh,dataset.digital));
+    isdincond = ~isempty(conddchidx);
+    isdinconderror=true;
+    if isdinmark
+        dincondtime = dataset.digital(conddchidx).time;
+        dincondvalue = dataset.digital(conddchidx).data;
+        if vlabconfig.NMarkPerCond*nct == length(dincondtime) && all(diff(dincondvalue))
+            isdinconderror = false;
         end
     end
 else
     isdinmark=false;
+    isdincond=false;
 end
 
 for i=1:nct
     if isdinmark
         if ~isdinmarkerror
-            on(i) = dintime((i-1)*vlabconfig.NMarkPerCond+1);
-            off(i) = dintime((i-1)*vlabconfig.NMarkPerCond+2);
+            on(i) = dinmarktime((i-1)*vlabconfig.NMarkPerCond+1);
+            off(i) = dinmarktime((i-1)*vlabconfig.NMarkPerCond+2);
         else
-            tss = ex.CondTest.CondOnTime(i);
-            tes = ex.CondTest.SufICIOnTime(i);
-            [isfound,ts,te]=trysearchmarktime(tss,tes,dintime,dinvalue,msr);
+            if isdincond && ~isdinconderror % use digital in condition times if possible
+                tss = dincondtime((i-1)*vlabconfig.NMarkPerCond+1) + ex.Latency;
+                tes = dincondtime((i-1)*vlabconfig.NMarkPerCond+2) + ex.Latency;
+            else
+                tss = ex.CondTest.CondOnTime(i);
+                tes = ex.CondTest.SufICIOnTime(i);
+            end
+            [isfound,ts,te]=trysearchmarktime(tss,tes,dinmarktime,dinmarkvalue,msr);
             if isfound
                 on(i)=ts;
                 off(i)=te;

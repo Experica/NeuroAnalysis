@@ -36,7 +36,7 @@ if ~isempty(ex)
         end
     end
     vlabdataset.ex = NeuroAnalysis.VLab.parseex(vlabdataset.ex);
-    [condon,condoff] =NeuroAnalysis.VLab.parsecondonoff(vlabdataset.ex,dataset,vlabconfig.MarkDCh,vlabconfig.MarkSearchRadius);
+    [condon,condoff] =NeuroAnalysis.VLab.parsecondonoff(vlabdataset.ex,dataset,vlabconfig.CondDCh,vlabconfig.MarkDCh,vlabconfig.MarkSearchRadius);
     if ~isempty(condon)
         vlabdataset.ex.CondTest.CondOn = condon;
     end
