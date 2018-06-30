@@ -1,4 +1,4 @@
-function [isfound,ts,te] = trysearchmarktime(tss,tes,dintime,dinvalue,msr)
+function [isfound,ts,te] = trysearchmarktime(tss,tes,dintime,dinvalue,sr)
 %TRYSEARCHMARKTIME Try to search mark time based on vlab time
 %   Detailed explanation goes here
 
@@ -8,15 +8,15 @@ for i=1:length(dinvalue)
     dts = dintime(i)-tss;
     dte = dintime(i)-tes;
     if (dinvalue(i) == msv)
-        if(abs(dts)<=msr)
+        if(abs(dts)<=sr)
             tssidx=[tssidx,i];
         end
     else
-        if(abs(dte)<=msr)
+        if(abs(dte)<=sr)
             tesidx=[tesidx,i];
         end
     end
-    if dts>msr&&dte>msr
+    if dts>sr&&dte>sr
         break;
     end
 end

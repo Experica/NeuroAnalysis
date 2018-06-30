@@ -7,7 +7,7 @@ classdef vlabconfig
         MarkDCh=2;
         StartDCh=3;
         StopDCh=4
-        MarkSearchRadius=20; % ms
+        LatencySearchRadius=20; % ms
         NMarkPerCond=2; % number of mark per condition
     end
     

@@ -15,6 +15,16 @@ ex.CondTest.CondRepeat = cellfun(@(x)int32(x), ex.CondTest.CondRepeat);
 ex.CondTest.PreICIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREICI'),true),ex.CondTest.CONDSTATE);
 ex.CondTest.CondOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'COND'),true),ex.CondTest.CONDSTATE);
 ex.CondTest.SufICIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFICI'),true),ex.CondTest.CONDSTATE);
+if isfield(ex.CondTest,'TRIALSTATE')
+    ex.CondTest.PreITIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREITI'),true),ex.CondTest.TRIALSTATE);
+    ex.CondTest.TrialOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'TRIAL'),true),ex.CondTest.TRIALSTATE);
+    ex.CondTest.SufITIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFITI'),true),ex.CondTest.TRIALSTATE);
+end
+if isfield(ex.CondTest,'BLOCKSTATE')
+    ex.CondTest.PreIBIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREIBI'),true),ex.CondTest.BLOCKSTATE);
+    ex.CondTest.BlockOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'BLOCK'),true),ex.CondTest.BLOCKSTATE);
+    ex.CondTest.SufIBIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFIBI'),true),ex.CondTest.BLOCKSTATE);
+end
 
 % Try parse Environment Parameter
 if ~isempty(ex.EnvParam)

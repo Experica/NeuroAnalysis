@@ -1,4 +1,4 @@
-function [on,off] = parsecondonoff(ex,dataset,CondDCh,MarkDCh,msr)
+function [on,off] = parsecondonoff(ex,dataset,CondDCh,MarkDCh,lsr)
 %PARSECONDONOFF Try to get the most accurate timing of Condition On/Off
 %   Detailed explanation goes here
 
@@ -16,10 +16,11 @@ if ~isempty(dataset) && isfield(dataset,'digital')
             isdinmarkerror = false;
         end
     end
+    
     conddchidx = find(arrayfun(@(x)x.channel==CondDCh,dataset.digital));
     isdincond = ~isempty(conddchidx);
     isdinconderror=true;
-    if isdinmark
+    if isdincond
         dincondtime = dataset.digital(conddchidx).time;
         dincondvalue = dataset.digital(conddchidx).data;
         if vlabconfig.NMarkPerCond*nct == length(dincondtime) && all(diff(dincondvalue))
@@ -44,7 +45,7 @@ for i=1:nct
                 tss = ex.CondTest.CondOnTime(i);
                 tes = ex.CondTest.SufICIOnTime(i);
             end
-            [isfound,ts,te]=trysearchmarktime(tss,tes,dinmarktime,dinmarkvalue,msr);
+            [isfound,ts,te]=trysearchmarktime(tss,tes,dinmarktime,dinmarkvalue,lsr);
             if isfound
                 on(i)=ts;
                 off(i)=te;
@@ -53,6 +54,9 @@ for i=1:nct
                 off(i)=tes;
             end
         end
+    elseif isdincond && ~isdinconderror
+        on(i) = dincondtime((i-1)*vlabconfig.NMarkPerCond+1) + ex.Latency;
+        off(i) = dincondtime((i-1)*vlabconfig.NMarkPerCond+2) + ex.Latency;
     else
         on(i) = ex.CondTest.CondOnTime(i);
         off(i) = ex.CondTest.SufICIOnTime(i);
@@ -64,7 +68,7 @@ if ex.PreICI==0 && ex.SufICI==0 && ~isempty(on) && ~isempty(off)
     for i=1:nct-1
         currentontime=on(i);
         nextontime = on(i+1);
-        if (nextontime - currentontime) > (ex.CondDur+2*msr)
+        if (nextontime - currentontime) > (ex.CondDur+2*lsr)
             off(i) = currentontime + ex.CondDur;
         else
             off(i)=nextontime;
