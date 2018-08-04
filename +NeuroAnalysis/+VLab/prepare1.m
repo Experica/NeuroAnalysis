@@ -32,17 +32,17 @@ end
 if isfield(ex.CondTest,'BlockRepeat')
     ex.CondTest.BlockRepeat = cellfun(@(x)int32(x), ex.CondTest.BlockRepeat);
 end
-    function searchrecover(from,to,data)
+    function searchrecover(from,to,data,sr)
         names = fieldnames(ex.CondTest);
-        fromnames = names(cellfun(@(x)startswith(x,from),names));
+        fromnames = names(cellfun(@(x)startsWith(x,from),names));
         for c=1:length(fromnames)
-            e= replace(c,from,to);
+            e= replace(fromnames{c},from,to);
             for i=1:nct
                 recovered=[];
                 ctses = ex.CondTest.(fromnames{c}){i};
                 if ~isempty(ctses)
                     for j=1:length(ctses)
-                        t=trysearchtime(ctses(j),data,vlabconfig.MaxDisplayLatencyError);
+                        t=NeuroAnalysis.VLab.trysearchtime(ctses(j),data,sr);
                         recovered=[recovered,t];
                     end
                 end
@@ -58,18 +58,24 @@ end
             ctts=ex.CondTest.(event){i};
             cttcs = ex.CondTest.(combineevent){i};
             if isempty(ctts)
+                combined=[];
                 if ~isempty(cttcs)
-                    ex.CondTest.(event){i}=cttcs;
+                    combined=cttcs;
                 end
             else
+                combined=ctts;
                 if ~isempty(cttcs)
                     for j=1:length(ctts)
                         if isnan(ctts(j)) && ~isnan(cttcs(j))
-                            ex.CondTest.(event){i}(j)=cttcs(j);
+                            combined(j)=cttcs(j);
                         end
                     end
                 end
             end
+            if ~isempty(combined) && all(arrayfun(@(x)isnan(x),combined))
+                combined=[];
+            end
+            ex.CondTest.(event){i}=combined;
         end
     end
 if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
@@ -99,6 +105,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 else
                     isdineventsyncerror=true;
                 end
+                ex.eventsyncintegrity=~isdineventsyncerror;
             end
             
             isdineventmeasure = ~isempty(eventmeasuredchidx);
@@ -110,6 +117,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 else
                     isdineventmeasureerror=true;
                 end
+                ex.eventmeasureintegrity=~isdineventmeasureerror;
             end
         end
     end
@@ -130,7 +138,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             end
         else
             % Try to recover as many sync timing as possible based on VLab Timing
-            searchrecover('VLab_','Sync_',dineventsynctime);
+            searchrecover('VLab_','Sync_',dineventsynctime,vlabconfig.MaxDisplayLatencyError);
         end
     end
     % Parse Sync Event Measure Timing
@@ -145,7 +153,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             end
         else
             % Try to recover as many measure timing as possible based on Sync Timing
-            searchrecover('Sync_','Measure_',dineventmeasuretime);
+            searchrecover('Sync_','Measure_',dineventmeasuretime,vlabconfig.MaxDisplayLatencyError);
         end
     end
     % Try to get the most accurate and complete Cond On/Off Time
@@ -190,20 +198,46 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     if isfield(ex.CondTest,'CondOff') && strcmp(condoffversion,'Sync') && isdineventsyncerror && isvlabcondoff
         combinetiming('CondOff','VLab_SUFICI');
     end
+    % Try to get unique Cond On/Off timing
+    if isfield(ex.CondTest,'CondOn')
+        ex.CondTest.CondOn=uniqueeventtime('CondOn');
+    end
+    if isfield(ex.CondTest,'CondOff')
+        ex.CondTest.CondOff=uniqueeventtime('CondOff');
+    end
     % Parse CondOff when no PreICI/SufICI
     if isfield(ex.CondTest,'CondOn') && ~isfield(ex.CondTest,'CondOff')
         for i=1:nct-1
-            currentontime=ex.CondTest.CondOn{i};
-            nextontime = ex.CondTest.CondOn{i+1};
+            currentontime=ex.CondTest.CondOn(i);
+            nextontime = ex.CondTest.CondOn(i+1);
             if (nextontime - currentontime) > (ex.CondDur+2*vlabconfig.MaxDisplayLatencyError)
-                ex.CondTest.CondOff{i} = currentontime + ex.CondDur;
+                ex.CondTest.CondOff(i) = currentontime + ex.CondDur;
             else
-                ex.CondTest.CondOff{i}=nextontime;
+                ex.CondTest.CondOff(i)=nextontime;
             end
         end
-        ex.CondTest.CondOff{nct}=ex.CondTest.CondOn{nct}+ex.CondDur;
+        ex.CondTest.CondOff(nct)=ex.CondTest.CondOn(nct)+ex.CondDur;
     end
 end
+    function ts = uniqueeventtime(event)
+        ts=[];
+        for i=1:nct
+            vs=ex.CondTest.(event){i};
+            t=[];
+            if ~isempty(vs)
+                for j=1:length(vs)
+                    if ~isnan(vs(j))
+                        t=[t,vs(j)];
+                        break;
+                    end
+                end
+            end
+            if isempty(t)
+                t=NaN;
+            end
+            ts=[ts,t];
+        end
+    end
 %% Try parse Environment Parameter
 if ~isempty(ex.EnvParam)
     ex.EnvParam = tryparseparamstruct(ex.EnvParam);

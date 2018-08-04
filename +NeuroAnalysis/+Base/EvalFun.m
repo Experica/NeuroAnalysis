@@ -8,7 +8,7 @@ try
 catch ME
     warning([ME.identifier,': ',ME.message]);
     for i=1:length(ME.stack)
-        ME.stack(i);
+        ME.stack(i)
     end
     result.status = false;
     result.fun = fun;
