@@ -10,7 +10,6 @@ parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 dataset = p.Results.dataset;
 
-import NeuroAnalysis.VLab.*
 %% check file
 vlabdataset = [];
 if(exist(filepath,'file')~=2)
@@ -21,37 +20,21 @@ d = dir(filepath);
 %% Read data
 disp(['Reading VLab File:    ',filepath,'    ...']);
 ex = yaml.ReadYaml(filepath);
-disp('Reading VLab File:    Done.');
+disp(['Reading VLab File:    ',filepath,'    Done.']);
 %% Prepare data
-disp('Preparing VLab Data:    ...');
+disp(['Preparing VLab Data:    ',filepath,'    ...']);
 if ~isempty(ex)
-    vlabdataset.ex = ex;
-    vlabdataset.ex.t0=0;
-    if ~isempty(dataset)
-        if isfield(dataset,'digital')
-            startdchidx = find(arrayfun(@(x)x.channel==vlabconfig.StartDCh,dataset.digital));
-            if ~isempty(startdchidx)
-                vlabdataset.ex.t0=dataset.digital(startdchidx).time;
-            end
-        end
+    if ~isfield(ex,'Version')
+        ex.Version=0;
     end
-    vlabdataset.ex = NeuroAnalysis.VLab.parseex(vlabdataset.ex);
-    [condon,condoff] =NeuroAnalysis.VLab.parsecondonoff(vlabdataset.ex,dataset,vlabconfig.CondDCh,vlabconfig.MarkDCh,vlabconfig.LatencySearchRadius);
-    if ~isempty(condon)
-        vlabdataset.ex.CondTest.CondOn = condon;
-    end
-    if ~isempty(condoff)
-        vlabdataset.ex.CondTest.CondOff = condoff;
-    end
+    vlabdataset.ex = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.VLab.prepare',num2str(ex.Version)],{ex,dataset});
     
-    vlabdataset.ex = NeuroAnalysis.Base.StandardizeEx(vlabdataset.ex);
     vlabdataset.ex.source = filepath;
     vlabdataset.ex.sourceformat = 'VLab';
     vlabdataset.ex.date = d.datenum;
     
     vlabdataset.source = filepath;
     vlabdataset.sourceformat = 'VLab';
-    
 end
-disp('Preparing VLab Data:    Done.');
+disp(['Preparing VLab Data:    ',filepath,'    Done.']);
 end

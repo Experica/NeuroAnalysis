@@ -3,12 +3,12 @@ classdef vlabconfig
     %   Detailed explanation goes here
     
     properties(Constant)
-        CondDCh=1;
-        MarkDCh=2;
-        StartDCh=3;
-        StopDCh=4
-        LatencySearchRadius=20; % ms
-        NMarkPerCond=2; % number of mark per condition
+        EventSyncDCh=1
+        EventMeasureDCh=2
+        StartSyncDCh=3
+        StopSyncDCh=4
+        Bits16DCh=5
+        MaxDisplayLatencyError = 20 % ms
     end
     
     methods
