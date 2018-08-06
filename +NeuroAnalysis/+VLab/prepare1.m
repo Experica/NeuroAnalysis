@@ -135,12 +135,12 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     end
     % Parse Sync Event Timing
     if isdineventsync
+        if isadddisplaylatency
+            displaylatency=ex.DisplayLatency;
+        else
+            displaylatency=0;
+        end
         if ~isdineventsyncerror
-            if isadddisplaylatency
-                displaylatency=ex.DisplayLatency;
-            else
-                displaylatency=0;
-            end
             for i=1:length(ses)
                 se = ['Sync_',ses{i}];
                 if ~isfield(ex.CondTest,se)
@@ -150,7 +150,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             end
         else
             % Try to recover as many sync timing as possible based on VLab Timing
-            searchrecover('VLab_','Sync_',dineventsynctime,vlabconfig.MaxDisplayLatencyError);
+            searchrecover('VLab_','Sync_',dineventsynctime+displaylatency,vlabconfig.MaxDisplayLatencyError);
         end
     end
     % Parse Sync Event Measure Timing
