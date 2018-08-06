@@ -6,10 +6,7 @@ try
     args = NeuroAnalysis.Base.Varargin2Literal('argin',length(argin));
     eval(['result=',fun,'(',args,');']);
 catch ME
-    warning([ME.identifier,': ',ME.message]);
-    for i=1:length(ME.stack)
-        ME.stack(i)
-    end
+    fprintf(2, '%s\n', getReport(ME));
     result.status = false;
     result.fun = fun;
     result.args = argin;

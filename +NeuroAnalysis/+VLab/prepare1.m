@@ -3,11 +3,13 @@ function [ex] = prepare1(ex,dataset)
 %   Detailed explanation goes here
 
 import NeuroAnalysis.Base.* NeuroAnalysis.VLab.*
-%% Trim CondTest
+%% Pad CondTest
 ctnames = fieldnames(ex.CondTest);
-nct = min(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
+nct = max(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
 for i=1:length(ctnames)
-    ex.CondTest.(ctnames{i}) = ex.CondTest.(ctnames{i})(1:nct);
+    if length(ex.CondTest.(ctnames{i})) < nct
+        ex.CondTest.(ctnames{i}){nct} = [];
+    end
 end
 %% Parse t0
 ex.t0=0;
@@ -20,16 +22,20 @@ end
 %% Parse CondTest
 if isfield(ex.CondTest,'CondIndex')
     % Convert to 1-base
+    ex.CondTest.CondIndex(cellfun(@isempty,ex.CondTest.CondIndex)) = {-2};
     ex.CondTest.CondIndex =cellfun(@(x)int32(x+1), ex.CondTest.CondIndex);
 end
 if isfield(ex.CondTest,'CondRepeat')
+    ex.CondTest.CondRepeat(cellfun(@isempty,ex.CondTest.CondRepeat)) = {-1};
     ex.CondTest.CondRepeat = cellfun(@(x)int32(x), ex.CondTest.CondRepeat);
 end
 if isfield(ex.CondTest,'BlockIndex')
     % Convert to 1-base
+    ex.CondTest.BlockIndex(cellfun(@isempty,ex.CondTest.BlockIndex)) = {-2};
     ex.CondTest.BlockIndex =cellfun(@(x)int32(x+1), ex.CondTest.BlockIndex);
 end
 if isfield(ex.CondTest,'BlockRepeat')
+    ex.CondTest.BlockRepeat(cellfun(@isempty,ex.CondTest.BlockRepeat)) = {-1};
     ex.CondTest.BlockRepeat = cellfun(@(x)int32(x), ex.CondTest.BlockRepeat);
 end
     function searchrecover(from,to,data,sr)
@@ -87,10 +93,16 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             e = ctses{j};
             ses=[ses,{e}];
             sectidx=[sectidx,i];
+            ve = ['VLab_',e];
+            if ~isfield(ex.CondTest,ve)
+                ex.CondTest.(ve)=cell(1,nct); % ensure each field has the right length
+            end
             ex.CondTest.(['VLab_',e]){i} = arrayfun(@(x)vlabtime2reftime(ex,x,isadddisplaylatency),findeventtime(ex.CondTest.Event{i},e));
         end
     end
     % Check Sync Event Data
+    isdineventsync = false;
+    isdineventmeasure = false;    
     if ~isempty(dataset) && isfield(dataset,'digital')
         if ex.EventSyncProtocol.nSyncChannel==1 && ex.EventSyncProtocol.nSyncpEvent==1
             eventsyncdchidx = find(arrayfun(@(x)x.channel==vlabconfig.EventSyncDCh,dataset.digital));
@@ -225,6 +237,7 @@ end
             vs=ex.CondTest.(event){i};
             t=[];
             if ~isempty(vs)
+                % pick the first valid timestamp
                 for j=1:length(vs)
                     if ~isnan(vs(j))
                         t=[t,vs(j)];
@@ -263,15 +276,33 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
         f=fs{i};
         ex.Cond.(f) = cellfun(@(x)tryparseparam(f,x),ex.Cond.(f),'uniformoutput',false);
     end
+    % Initialize ctc table
+    isori = ismember('Ori',fs);
+    isorioffset = ismember('OriOffset',fs);
+    isposition = ismember('Position',fs);
+    ispositionoffset=ismember('PositionOffset',fs);
+    for fi=1:length(fs)  
+        f=fs{fi};
+        ctc.(f) = cell(1, nct);
+    end
+    if isori || isorioffset
+        ctc.Ori_Final = cell(1, nct);
+    end
+    if isposition || ispositionoffset
+        ctc.Position_Final = cell(1, nct);
+    end
     % parse condition for each condtest
     for i=1:nct
+        if ex.CondTest.CondIndex(i) < 1 || ex.CondTest.CondIndex(i) > nct
+            continue;
+        end
+        
         for fi=1:length(fs)
             f=fs{fi};
             ctc.(f)(i)=ex.Cond.(f)(ex.CondTest.CondIndex(i));
         end
         % parse final orientation
-        isori = ismember('Ori',fs);
-        isorioffset = ismember('OriOffset',fs);
+        
         if isori
             ori = ctc.Ori{i};
         elseif isenvori
@@ -290,8 +321,6 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
             ctc.Ori_Final{i}=ori+orioffset;
         end
         % parse final position
-        isposition = ismember('Position',fs);
-        ispositionoffset=ismember('PositionOffset',fs);
         if isposition
             position=ctc.Position{i};
         elseif isenvposition
