@@ -183,9 +183,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         v = arrayfun(@(x)reftime2vlabtime(x,ex.t0,ex.TimerDriftSpeed),uniqueeventtime('VLab_COND')');
         valid = ~isnan(s) & ~isnan(v);
         s = s(valid); v = v(valid);
-        X = [ones(sum(valid),1), s-v];
-        e = X\v;
-        ex.MeasureTimerDriftSpeed = e(2);
+        ex.MeasureTimerDriftSpeed = v\s - 1;
     end
     
     condonversion='None';condoffversion='None';
@@ -193,19 +191,19 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         ex.CondTest.CondOn=ex.CondTest.Measure_COND;
         condonversion='Measure';
     elseif issynccondon
-        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_COND);
+        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_COND,'Un',0);
         condonversion='Sync';
     elseif isvlabcondon
-        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_COND);
+        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_COND,'Un',0);
     end
     if ismeasurecondoff
         ex.CondTest.CondOff=ex.CondTest.Measure_SUFICI;
         condoffversion='Measure';
     elseif issynccondoff
-        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_SUFICI);
+        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_SUFICI,'Un',0);
         condoffversion='Sync';
     elseif isvlabcondoff
-        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_SUFICI);
+        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_SUFICI,'Un',0);
     end
     
     if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Measure') && isdineventmeasureerror && issynccondon
