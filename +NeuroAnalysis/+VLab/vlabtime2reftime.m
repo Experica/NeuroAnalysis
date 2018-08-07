@@ -1,14 +1,14 @@
-function [reft] = vlabtime2reftime(ex,vlabtime,isadddisplaylatency)
+function [reft] = vlabtime2reftime(vlabtime,t0,timerdriftspeed,latency)
 %VLABTIME2REFTIME Convert VLab Timing to Reference Timing
 %   Detailed explanation goes here
 
-if nargin==2
-    isadddisplaylatency=false;
+if nargin==3
+    latency=0;
 end
 
-reft = vlabtime*(1+ex.TimerDriftSpeed)+ex.t0;
-if isadddisplaylatency
-    reft = reft + ex.DisplayLatency;
+reft = vlabtime*(1+timerdriftspeed)+t0;
+if latency~=0
+    reft = reft + latency;
 end
 
 end

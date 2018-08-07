@@ -45,10 +45,10 @@ end
             e= replace(fromnames{c},from,to);
             for i=1:nct
                 recovered=[];
-                ctses = ex.CondTest.(fromnames{c}){i}+latency;
+                ctses = ex.CondTest.(fromnames{c}){i};
                 if ~isempty(ctses)
                     for j=1:length(ctses)
-                        t=NeuroAnalysis.VLab.trysearchtime(ctses(j),data,sr);
+                        t=NeuroAnalysis.VLab.trysearchtime(ctses(j)+latency,data,sr);
                         recovered=[recovered,t];
                     end
                 end
@@ -95,14 +95,14 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             sectidx=[sectidx,i];
             ve = ['VLab_',e];
             if ~isfield(ex.CondTest,ve)
-                ex.CondTest.(ve)=cell(1,nct); % ensure each field has the right length
+                ex.CondTest.(ve)=cell(1,nct); % ensure each field has the same length
             end
-            ex.CondTest.(['VLab_',e]){i} = arrayfun(@(x)vlabtime2reftime(ex,x,false),findeventtime(ex.CondTest.Event{i},e));
+            ex.CondTest.(ve){i} = arrayfun(@(x)vlabtime2reftime(x,ex.t0,ex.TimerDriftSpeed),findeventtime(ex.CondTest.Event{i},e));
         end
     end
     % Check Sync Event Data
     isdineventsync = false;
-    isdineventmeasure = false;    
+    isdineventmeasure = false;
     if ~isempty(dataset) && isfield(dataset,'digital')
         if ex.EventSyncProtocol.nSyncChannel==1 && ex.EventSyncProtocol.nSyncpEvent==1
             eventsyncdchidx = find(arrayfun(@(x)x.channel==vlabconfig.EventSyncDCh,dataset.digital));
@@ -171,40 +171,41 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     issynccondoff = isfield(ex.CondTest,'Sync_SUFICI');
     isvlabcondoff = isfield(ex.CondTest,'VLab_SUFICI');
     
+    % Calculate measured display latency and timer drift speed
+    if ismeasurecondon && issynccondon
+        m = uniqueeventtime('Measure_COND');
+        s = uniqueeventtime('Sync_COND');
+        ex.MeasureMeanDisplayLatency = nanmean(m-s);
+        ex.MeasureSTDDisplayLatency = nanstd(m-s);
+    end
+    if issynccondon && isvlabcondon
+        s = uniqueeventtime('Sync_COND')';
+        v = arrayfun(@(x)reftime2vlabtime(x,ex.t0,ex.TimerDriftSpeed),uniqueeventtime('VLab_COND')');
+        valid = ~isnan(s) & ~isnan(v);
+        s = s(valid); v = v(valid);
+        X = [ones(sum(valid),1), s-v];
+        e = X\v;
+        ex.MeasureTimerDriftSpeed = e(2);
+    end
+    
     condonversion='None';condoffversion='None';
     if ismeasurecondon
         ex.CondTest.CondOn=ex.CondTest.Measure_COND;
         condonversion='Measure';
     elseif issynccondon
-        ex.CondTest.CondOn=ex.CondTest.Sync_COND;
+        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_COND);
         condonversion='Sync';
     elseif isvlabcondon
-        ex.CondTest.CondOn=ex.CondTest.VLab_COND;
+        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_COND);
     end
     if ismeasurecondoff
         ex.CondTest.CondOff=ex.CondTest.Measure_SUFICI;
         condoffversion='Measure';
     elseif issynccondoff
-        ex.CondTest.CondOff=ex.CondTest.Sync_SUFICI;
+        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_SUFICI);
         condoffversion='Sync';
     elseif isvlabcondoff
-        ex.CondTest.CondOff=ex.CondTest.VLab_SUFICI;
-    end
-    
-    % Calculate measured display latency and drift rate
-    if ismeasurecondon && issynccondon
-        m = uniqueeventtime('Measure_COND');
-        s = uniqueeventtime('Sync_COND');
-        ex.MeasureDisplayLatency = nanmean(m-s);
-    end
-    if issynccondon && isvlabcondon && ~isdineventsyncerror
-        s = uniqueeventtime('Sync_COND')';
-        v = uniqueeventtime('VLab_COND')';
-        valid = ~isnan(s) & ~isnan(v);
-        s = s(valid); v = v(valid);
-        X = [ones(sum(valid),1), s];
-        e = X\v;
-        ex.MeasureTimerDriftSpeed = 1-e(2)+ex.TimerDriftSpeed;
+        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_SUFICI);
     end
     
     if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Measure') && isdineventmeasureerror && issynccondon
@@ -216,10 +217,10 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         condoffversion='Sync';
     end
     if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Sync') && isdineventsyncerror && isvlabcondon
-        combinetiming('CondOn','VLab_COND',0);
+        combinetiming('CondOn','VLab_COND',ex.DisplayLatency);
     end
     if isfield(ex.CondTest,'CondOff') && strcmp(condoffversion,'Sync') && isdineventsyncerror && isvlabcondoff
-        combinetiming('CondOff','VLab_SUFICI',0);
+        combinetiming('CondOff','VLab_SUFICI',ex.DisplayLatency);
     end
     % Try to get unique Cond On/Off timing
     if isfield(ex.CondTest,'CondOn')
@@ -287,12 +288,12 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
         f=fs{i};
         ex.Cond.(f) = cellfun(@(x)tryparseparam(f,x),ex.Cond.(f),'uniformoutput',false);
     end
-    % Initialize ctc table
     isori = ismember('Ori',fs);
     isorioffset = ismember('OriOffset',fs);
     isposition = ismember('Position',fs);
     ispositionoffset=ismember('PositionOffset',fs);
-    for fi=1:length(fs)  
+    % Initialize condtest condition
+    for fi=1:length(fs)
         f=fs{fi};
         ctc.(f) = cell(1, nct);
     end
@@ -304,7 +305,7 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
     end
     % parse condition for each condtest
     for i=1:nct
-        if ex.CondTest.CondIndex(i) < 1 || ex.CondTest.CondIndex(i) > nct
+        if ex.CondTest.CondIndex(i) < 1
             continue;
         end
         
@@ -313,7 +314,6 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
             ctc.(f)(i)=ex.Cond.(f)(ex.CondTest.CondIndex(i));
         end
         % parse final orientation
-        
         if isori
             ori = ctc.Ori{i};
         elseif isenvori
