@@ -37,8 +37,13 @@ classdef MetaTable < handle
             matchindex =  [];
             searchtemplate = NeuroAnalysis.Base.getstructfields(test,...
                 {'Subject_ID', 'RecordSession'});
-            keys = fieldnames(searchtemplate);
-            values = struct2cell(searchtemplate);
+            if isempty(searchtemplate)
+                keys = {};
+                values = {};
+            else
+                keys = fieldnames(searchtemplate);
+                values = struct2cell(searchtemplate);
+            end
             roughmatchindex = obj.iquery(keys, values);
             if ~isempty(roughmatchindex)
                 matchindex = NeuroAnalysis.Base.EvalFun(...
