@@ -183,7 +183,9 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         v = arrayfun(@(x)reftime2vlabtime(x,ex.t0,ex.TimerDriftSpeed),uniqueeventtime('VLab_COND')');
         valid = ~isnan(s) & ~isnan(v);
         s = s(valid); v = v(valid);
-        ex.MeasureTimerDriftSpeed = v\s - 1;
+        X = [ones(sum(valid),1), v];
+        e = X\(s-v);
+        ex.MeasureTimerDriftSpeed = e(2);
     end
     
     condonversion='None';condoffversion='None';
