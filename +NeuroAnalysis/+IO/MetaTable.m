@@ -158,7 +158,6 @@ classdef MetaTable < handle
             deletemissingfile = false;
             forall = false;
             
-            dr = java.io.File(dataroot).toURI();
             missingtest=[];
             disp('Validating metadata:   ...');
             if isempty(obj.Tests)
@@ -206,7 +205,7 @@ classdef MetaTable < handle
                                 obj.Tests(t).files(i)=[];
                             end
                         else
-                            obj.Tests(t).files{i}= ['./', char(dr.relativize(java.io.File(p).toURI()))];
+                            obj.Tests(t).files{i}= fullfile('.',strrep(p,dataroot,''));
                         end
                     end
                 end
