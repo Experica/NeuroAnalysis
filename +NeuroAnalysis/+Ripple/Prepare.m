@@ -27,10 +27,10 @@ if(strcmp(ns_RESULT,'ns_OK'))
     isrippledata = true;
 end
 
-isvlabdata = false;
-vlabfilepath =fullfile(filedir,[filename '.yaml']);
-if(exist(vlabfilepath,'file')==2)
-    isvlabdata = true;
+isexdata = false;
+exfilepath =fullfile(filedir,[filename '.yaml']);
+if(exist(exfilepath,'file')==2)
+    isexdata = true;
 end
 
 isvisstimdata = false;
@@ -203,13 +203,13 @@ if ~isempty(dataset)
     dataset.sourceformat = 'Ripple';
 end
 ns_RESULT = ns_CloseFile(hFile);
-disp('Reading Ripple Files:    Done.');
+disp(['Reading Ripple Files:    ',datafilepath,'.*    Done.']);
 %% Prepare Ripple data
 disp('Preparing Ripple Data    ...');
     function y = dinch(x)
         switch x
             case 'Parallel'
-                y=0;
+                y=5;
             case 'SMA 1'
                 y=1;
             case 'SMA 2'
@@ -219,7 +219,7 @@ disp('Preparing Ripple Data    ...');
             case 'SMA 4'
                 y=4;
             otherwise
-                y=5;
+                y=0;
         end
         y=uint16(y);
     end
@@ -239,10 +239,10 @@ end
 disp('Preparing Ripple Data:    Done.');
 %% Prepare corresponding experimental data
 if(~isempty(dataset))
-    if(isvlabdata)
-        vlabdataset = NeuroAnalysis.VLab.Prepare(vlabfilepath,dataset);
-        if ~isempty(vlabdataset)
-            dataset.ex = vlabdataset.ex;
+    if(isexdata)
+        exdataset = NeuroAnalysis.Experica.Prepare(exfilepath,dataset);
+        if ~isempty(exdataset)
+            dataset.ex = exdataset.ex;
         end
     elseif(isvisstimdata)
         visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,dataset);

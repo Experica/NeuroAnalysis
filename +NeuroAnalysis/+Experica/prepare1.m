@@ -1,8 +1,8 @@
 function [ex] = prepare1(ex,dataset)
-%PREPARE1 Prepare version 1 of VLab data format
+%PREPARE1 Prepare version 1 of Experica.Command data format
 %   Detailed explanation goes here
 
-import NeuroAnalysis.Base.* NeuroAnalysis.VLab.*
+import NeuroAnalysis.Base.* NeuroAnalysis.Experica.*
 %% Pad CondTest
 ctnames = fieldnames(ex.CondTest);
 nct = max(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
@@ -14,9 +14,9 @@ end
 %% Parse t0
 ex.t0=0;
 if ~isempty(dataset) && isfield(dataset,'digital')
-    startsyncdchidx = find(arrayfun(@(x)x.channel==vlabconfig.StartSyncDCh,dataset.digital));
-    if ~isempty(startsyncdchidx)
-        ex.t0=dataset.digital(startsyncdchidx).time;
+    startsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.StartSyncCh+1,dataset.digital));
+    if ~isempty(startsyncchidx)
+        ex.t0=dataset.digital(startsyncchidx).time;
     end
 end
 %% Parse CondTest
@@ -29,6 +29,15 @@ if isfield(ex.CondTest,'CondRepeat')
     ex.CondTest.CondRepeat(cellfun(@isempty,ex.CondTest.CondRepeat)) = {-1};
     ex.CondTest.CondRepeat = cellfun(@(x)int32(x), ex.CondTest.CondRepeat);
 end
+if isfield(ex.CondTest,'TrialIndex')
+    % Convert to 1-base
+    ex.CondTest.TrialIndex(cellfun(@isempty,ex.CondTest.TrialIndex)) = {-2};
+    ex.CondTest.TrialIndex =cellfun(@(x)int32(x+1), ex.CondTest.TrialIndex);
+end
+if isfield(ex.CondTest,'TrialRepeat')
+    ex.CondTest.TrialRepeat(cellfun(@isempty,ex.CondTest.TrialRepeat)) = {-1};
+    ex.CondTest.TrialRepeat = cellfun(@(x)int32(x), ex.CondTest.TrialRepeat);
+end
 if isfield(ex.CondTest,'BlockIndex')
     % Convert to 1-base
     ex.CondTest.BlockIndex(cellfun(@isempty,ex.CondTest.BlockIndex)) = {-2};
@@ -38,24 +47,26 @@ if isfield(ex.CondTest,'BlockRepeat')
     ex.CondTest.BlockRepeat(cellfun(@isempty,ex.CondTest.BlockRepeat)) = {-1};
     ex.CondTest.BlockRepeat = cellfun(@(x)int32(x), ex.CondTest.BlockRepeat);
 end
+%% Parse CondTest Sync Event Timing
     function searchrecover(from,to,data,latency,sr)
         names = fieldnames(ex.CondTest);
         fromnames = names(cellfun(@(x)startsWith(x,from),names));
         for c=1:length(fromnames)
-            e= replace(fromnames{c},from,to);
-            for i=1:nct
+            fct = ex.CondTest.(fromnames{c});
+            te= replace(fromnames{c},from,to);
+            for p=1:nct
                 recovered=[];
-                ctses = ex.CondTest.(fromnames{c}){i};
-                if ~isempty(ctses)
-                    for j=1:length(ctses)
-                        t=NeuroAnalysis.VLab.trysearchtime(ctses(j)+latency,data,sr);
+                ctfets = fct{p};
+                if ~isempty(ctfets)
+                    for ti=1:length(ctfets)
+                        t=trysearchtime(ctfets(ti)+latency,data,sr);
                         recovered=[recovered,t];
                     end
                 end
                 if ~isempty(recovered) && all(arrayfun(@(x)isnan(x),recovered))
                     recovered=[];
                 end
-                ex.CondTest.(e){i}=recovered;
+                ex.CondTest.(te){p}=recovered;
             end
         end
     end
@@ -84,20 +95,32 @@ end
             ex.CondTest.(event){i}=combined;
         end
     end
+    function [uets] = uniqueeventtime(ts,es)
+        ues = unique(es);
+        for uei=1:length(ues)
+            uets.(ues{uei})=[];
+        end
+        for ei=1:length(es)
+            uets.(es{ei})=[uets.(es{ei}),ts(ei)];
+        end
+    end
 if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
-    % Parse Sync Event VLab Timing
+    % Parse Sync Event Experica.Command Timing
     ses=[];sectidx=[];
     for i = 1:nct
+        ctes = ex.CondTest.Event{i};
         ctses = ex.CondTest.SyncEvent{i};
-        for j = 1:length(ctses)
-            e = ctses{j};
-            ses=[ses,{e}];
-            sectidx=[sectidx,i];
-            ve = ['VLab_',e];
-            if ~isfield(ex.CondTest,ve)
-                ex.CondTest.(ve)=cell(1,nct); % ensure each field has the same length
+        ses=[ses,ctses];
+        sectidx=[sectidx,repelem(i,length(ctses))];
+        usets = uniqueeventtime(arrayfun(@(x)toreftime(x,ex.t0,ex.TimerDriftSpeed), findeventtime(ctes,ctses)),ctses);
+        uses = fieldnames(usets);
+        for j=1:length(uses)
+            e = uses{j};
+            ee = ['Command_',e];
+            if ~isfield(ex.CondTest,ee)
+                ex.CondTest.(ee)=cell(1,nct); % ensure each field has the same length
             end
-            ex.CondTest.(ve){i} = arrayfun(@(x)vlabtime2reftime(x,ex.t0,ex.TimerDriftSpeed),findeventtime(ex.CondTest.Event{i},e));
+            ex.CondTest.(ee){i}=usets.(e);
         end
     end
     % Check Sync Event Data
@@ -105,13 +128,13 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     isdineventmeasure = false;
     if ~isempty(dataset) && isfield(dataset,'digital')
         if ex.EventSyncProtocol.nSyncChannel==1 && ex.EventSyncProtocol.nSyncpEvent==1
-            eventsyncdchidx = find(arrayfun(@(x)x.channel==vlabconfig.EventSyncDCh,dataset.digital));
-            eventmeasuredchidx = find(arrayfun(@(x)x.channel==vlabconfig.EventMeasureDCh,dataset.digital));
+            eventsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.EventSyncCh+1,dataset.digital));
+            eventmeasurechidx = find(arrayfun(@(x)x.channel==ex.Config.EventMeasureCh+1,dataset.digital));
             
-            isdineventsync = ~isempty(eventsyncdchidx);
+            isdineventsync = ~isempty(eventsyncchidx);
             if isdineventsync
-                dineventsynctime = dataset.digital(eventsyncdchidx).time;
-                dineventsyncdata = dataset.digital(eventsyncdchidx).data;
+                dineventsynctime = dataset.digital(eventsyncchidx).time;
+                dineventsyncdata = dataset.digital(eventsyncchidx).data;
                 if length(ses)==length(dineventsyncdata) && all(diff(dineventsyncdata))
                     isdineventsyncerror=false;
                 else
@@ -120,10 +143,10 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 ex.eventsyncintegrity=~isdineventsyncerror;
             end
             
-            isdineventmeasure = ~isempty(eventmeasuredchidx);
+            isdineventmeasure = ~isempty(eventmeasurechidx);
             if isdineventmeasure
-                dineventmeasuretime = dataset.digital(eventmeasuredchidx).time;
-                dineventmeasuredata = dataset.digital(eventmeasuredchidx).data;
+                dineventmeasuretime = dataset.digital(eventmeasurechidx).time;
+                dineventmeasuredata = dataset.digital(eventmeasurechidx).data;
                 if length(ses)==length(dineventmeasuredata) && all(diff(dineventmeasuredata))
                     isdineventmeasureerror=false;
                 else
@@ -144,46 +167,46 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 ex.CondTest.(se){sectidx(i)} = [ex.CondTest.(se){sectidx(i)},dineventsynctime(i)];
             end
         else
-            % Try to recover as many sync timing as possible based on VLab Timing
-            searchrecover('VLab_','Sync_',dineventsynctime,0,vlabconfig.MaxDisplayLatencyError);
+            % Try to recover as many sync timing as possible based on Experica.Command Timing
+            searchrecover('Command_','Sync_',dineventsynctime,0,ex.Config.MaxDisplayLatencyError);
         end
     end
     % Parse Sync Event Measure Timing
     if isdineventmeasure
         if ~isdineventmeasureerror
             for i=1:length(ses)
-                se = ['Measure_',ses{i}];
-                if ~isfield(ex.CondTest,se)
-                    ex.CondTest.(se)=cell(1,nct);
+                me = ['Measure_',ses{i}];
+                if ~isfield(ex.CondTest,me)
+                    ex.CondTest.(me)=cell(1,nct);
                 end
-                ex.CondTest.(se){sectidx(i)} = [ex.CondTest.(se){sectidx(i)},dineventmeasuretime(i)];
+                ex.CondTest.(me){sectidx(i)} = [ex.CondTest.(me){sectidx(i)},dineventmeasuretime(i)];
             end
         else
             % Try to recover as many measure timing as possible based on Sync Timing
-            searchrecover('Sync_','Measure_',dineventmeasuretime,ex.DisplayLatency,vlabconfig.MaxDisplayLatencyError);
+            searchrecover('Sync_','Measure_',dineventmeasuretime,ex.DisplayLatency,ex.Config.MaxDisplayLatencyError);
         end
     end
     % Try to get the most accurate and complete Cond On/Off Time
     ismeasurecondon = isfield(ex.CondTest,'Measure_COND');
     issynccondon = isfield(ex.CondTest,'Sync_COND');
-    isvlabcondon = isfield(ex.CondTest,'VLab_COND');
+    iscommandcondon = isfield(ex.CondTest,'Command_COND');
     ismeasurecondoff = isfield(ex.CondTest,'Measure_SUFICI');
     issynccondoff = isfield(ex.CondTest,'Sync_SUFICI');
-    isvlabcondoff = isfield(ex.CondTest,'VLab_SUFICI');
+    iscommandcondoff = isfield(ex.CondTest,'Command_SUFICI');
     
     % Calculate measured display latency and timer drift speed
     if ismeasurecondon && issynccondon
-        m = uniqueeventtime('Measure_COND');
-        s = uniqueeventtime('Sync_COND');
+        m = firsteventtime('Measure_COND');
+        s = firsteventtime('Sync_COND');
         ex.MeasureMeanDisplayLatency = nanmean(m-s);
         ex.MeasureSTDDisplayLatency = nanstd(m-s);
     end
-    if issynccondon && isvlabcondon
-        s = uniqueeventtime('Sync_COND')';
-        v = arrayfun(@(x)reftime2vlabtime(x,ex.t0,ex.TimerDriftSpeed),uniqueeventtime('VLab_COND')');
+    if issynccondon && iscommandcondon
+        s = firsteventtime('Sync_COND')';
+        v = arrayfun(@(x)reftotime(x,ex.t0,ex.TimerDriftSpeed),firsteventtime('Command_COND')');
         valid = ~isnan(s) & ~isnan(v);
         s = s(valid); v = v(valid);
-        X = [ones(sum(valid),1), v];
+        X = [ones(length(s),1), v];
         e = X\(s-v);
         ex.MeasureTimerDriftSpeed = e(2);
     end
@@ -195,8 +218,8 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     elseif issynccondon
         ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_COND,'Un',0);
         condonversion='Sync';
-    elseif isvlabcondon
-        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_COND,'Un',0);
+    elseif iscommandcondon
+        ex.CondTest.CondOn=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Command_COND,'Un',0);
     end
     if ismeasurecondoff
         ex.CondTest.CondOff=ex.CondTest.Measure_SUFICI;
@@ -204,8 +227,8 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     elseif issynccondoff
         ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Sync_SUFICI,'Un',0);
         condoffversion='Sync';
-    elseif isvlabcondoff
-        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.VLab_SUFICI,'Un',0);
+    elseif iscommandcondoff
+        ex.CondTest.CondOff=cellfun(@(x)x+ex.DisplayLatency,ex.CondTest.Command_SUFICI,'Un',0);
     end
     
     if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Measure') && isdineventmeasureerror && issynccondon
@@ -216,25 +239,25 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         combinetiming('CondOff','Sync_SUFICI',ex.DisplayLatency);
         condoffversion='Sync';
     end
-    if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Sync') && isdineventsyncerror && isvlabcondon
-        combinetiming('CondOn','VLab_COND',ex.DisplayLatency);
+    if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Sync') && isdineventsyncerror && iscommandcondon
+        combinetiming('CondOn','Command_COND',ex.DisplayLatency);
     end
-    if isfield(ex.CondTest,'CondOff') && strcmp(condoffversion,'Sync') && isdineventsyncerror && isvlabcondoff
-        combinetiming('CondOff','VLab_SUFICI',ex.DisplayLatency);
+    if isfield(ex.CondTest,'CondOff') && strcmp(condoffversion,'Sync') && isdineventsyncerror && iscommandcondoff
+        combinetiming('CondOff','Command_SUFICI',ex.DisplayLatency);
     end
-    % Try to get unique Cond On/Off timing
+    % Try to get first Cond On/Off timing
     if isfield(ex.CondTest,'CondOn')
-        ex.CondTest.CondOn=uniqueeventtime('CondOn');
+        ex.CondTest.CondOn=firsteventtime('CondOn');
     end
     if isfield(ex.CondTest,'CondOff')
-        ex.CondTest.CondOff=uniqueeventtime('CondOff');
+        ex.CondTest.CondOff=firsteventtime('CondOff');
     end
     % Parse CondOff when no PreICI/SufICI
     if isfield(ex.CondTest,'CondOn') && ~isfield(ex.CondTest,'CondOff')
         for i=1:nct-1
             currentontime=ex.CondTest.CondOn(i);
             nextontime = ex.CondTest.CondOn(i+1);
-            if (nextontime - currentontime) > (ex.CondDur+2*vlabconfig.MaxDisplayLatencyError)
+            if (nextontime - currentontime) > (ex.CondDur+2*ex.Config.MaxDisplayLatencyError)
                 ex.CondTest.CondOff(i) = currentontime + ex.CondDur;
             else
                 ex.CondTest.CondOff(i)=nextontime;
@@ -243,21 +266,13 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         ex.CondTest.CondOff(nct)=ex.CondTest.CondOn(nct)+ex.CondDur;
     end
 end
-    function ts = uniqueeventtime(event)
+    function ts = firsteventtime(event)
         ts=[];
         for i=1:nct
             vs=ex.CondTest.(event){i};
-            t=[];
             if ~isempty(vs)
-                % pick the first valid timestamp
-                for j=1:length(vs)
-                    if ~isnan(vs(j))
-                        t=[t,vs(j)];
-                        break;
-                    end
-                end
-            end
-            if isempty(t)
+                t=vs(1);
+            else
                 t=NaN;
             end
             ts=[ts,t];

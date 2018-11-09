@@ -5,7 +5,7 @@ function [paramstruct] = tryparseparamstruct(paramstruct)
 fn = fieldnames(paramstruct);
 for i=1:length(fn)
     p = fn{i};
-    paramstruct.(p) =NeuroAnalysis.VLab.tryparseparam(p,paramstruct.(p));
+    paramstruct.(p) =NeuroAnalysis.Experica.tryparseparam(p,paramstruct.(p));
 end
 
 end

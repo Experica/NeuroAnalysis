@@ -1,8 +1,8 @@
 function [ex] = parseex(ex)
-%PARSEEX Parse VLab Data
+%PARSEEX Parse version 0 of Experica.Command Data
 %   Detailed explanation goes here
 
-import NeuroAnalysis.Base.* NeuroAnalysis.VLab.*
+import NeuroAnalysis.Base.* NeuroAnalysis.Experica.*
 % Trim CondTest
 ctnames = fieldnames(ex.CondTest);
 nct = min(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
@@ -10,20 +10,49 @@ for i=1:length(ctnames)
     ex.CondTest.(ctnames{i}) = ex.CondTest.(ctnames{i})(1:nct);
 end
 
+    function [t] = findstatetime(stateevents,state)
+        %FINDSTATETIME Extract timestamps of state event
+        
+        t=[];
+        for i=1:length(stateevents)
+            if isfield(stateevents{i},state)
+                t = [t,stateevents{i}.(state)];
+            end
+        end
+        if isempty(t)
+            t=NaN;
+        end
+        
+    end
+
+    function [datatime] = todatatime(ex,time,isaddlatency)
+        %TODATATIME Convert to Data Timing
+        
+        if nargin==2
+            isaddlatency=false;
+        end
+        
+        datatime = time*(1+ex.TimerDriftSpeed)+ex.t0;
+        if isaddlatency
+            datatime = datatime + ex.Latency;
+        end
+        
+    end
+
 ex.CondTest.CondIndex =cellfun(@(x)int32(x+1), ex.CondTest.CondIndex); % Convert to 1-base
 ex.CondTest.CondRepeat = cellfun(@(x)int32(x), ex.CondTest.CondRepeat);
-ex.CondTest.PreICIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREICI'),true),ex.CondTest.CONDSTATE);
-ex.CondTest.CondOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'COND'),true),ex.CondTest.CONDSTATE);
-ex.CondTest.SufICIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFICI'),true),ex.CondTest.CONDSTATE);
+ex.CondTest.PreICIOnTime =cellfun(@(x)todatatime(ex,findstatetime(x,'PREICI'),true),ex.CondTest.CONDSTATE);
+ex.CondTest.CondOnTime = cellfun(@(x)todatatime(ex,findstatetime(x,'COND'),true),ex.CondTest.CONDSTATE);
+ex.CondTest.SufICIOnTime = cellfun(@(x)todatatime(ex,findstatetime(x,'SUFICI'),true),ex.CondTest.CONDSTATE);
 if isfield(ex.CondTest,'TRIALSTATE')
-    ex.CondTest.PreITIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREITI'),true),ex.CondTest.TRIALSTATE);
-    ex.CondTest.TrialOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'TRIAL'),true),ex.CondTest.TRIALSTATE);
-    ex.CondTest.SufITIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFITI'),true),ex.CondTest.TRIALSTATE);
+    ex.CondTest.PreITIOnTime =cellfun(@(x)todatatime(ex,findstatetime(x,'PREITI'),true),ex.CondTest.TRIALSTATE);
+    ex.CondTest.TrialOnTime = cellfun(@(x)todatatime(ex,findstatetime(x,'TRIAL'),true),ex.CondTest.TRIALSTATE);
+    ex.CondTest.SufITIOnTime = cellfun(@(x)todatatime(ex,findstatetime(x,'SUFITI'),true),ex.CondTest.TRIALSTATE);
 end
 if isfield(ex.CondTest,'BLOCKSTATE')
-    ex.CondTest.PreIBIOnTime =cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'PREIBI'),true),ex.CondTest.BLOCKSTATE);
-    ex.CondTest.BlockOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'BLOCK'),true),ex.CondTest.BLOCKSTATE);
-    ex.CondTest.SufIBIOnTime = cellfun(@(x)vlabtimetodatatime(ex,findstatetime(x,'SUFIBI'),true),ex.CondTest.BLOCKSTATE);
+    ex.CondTest.PreIBIOnTime =cellfun(@(x)todatatime(ex,findstatetime(x,'PREIBI'),true),ex.CondTest.BLOCKSTATE);
+    ex.CondTest.BlockOnTime = cellfun(@(x)todatatime(ex,findstatetime(x,'BLOCK'),true),ex.CondTest.BLOCKSTATE);
+    ex.CondTest.SufIBIOnTime = cellfun(@(x)todatatime(ex,findstatetime(x,'SUFIBI'),true),ex.CondTest.BLOCKSTATE);
 end
 
 % Try parse Environment Parameter

@@ -2,7 +2,7 @@ function [v] = getparam(paramstruct,param,ignorecase)
 %GETPARAM Try get param value from ParamStruct
 %   Detailed explanation goes here
 
-if nargin < 3
+if nargin == 2
     ignorecase = false;
 end
 
