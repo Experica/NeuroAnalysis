@@ -9,4 +9,3 @@ end
 t = (reft-t0-latency)/(1+timerdriftspeed);
 
 end
-
