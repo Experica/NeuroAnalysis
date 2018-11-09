@@ -9,4 +9,3 @@ end
 reft = time*(1+timerdriftspeed)+t0+latency;
 
 end
-
