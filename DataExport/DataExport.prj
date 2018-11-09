@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="2039816416" file="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\fff00\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="2039816416" file="C:\Users\Alex\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\Alex\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
     <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
     <param.icons>
@@ -8,15 +8,15 @@
       <file>${PROJECT_ROOT}\DataExport_resources\icon_24.png</file>
       <file>${PROJECT_ROOT}\DataExport_resources\icon_16.png</file>
     </param.icons>
-    <param.version>1.10</param.version>
+    <param.version>1.2</param.version>
     <param.authnamewatermark>Li Alex Zhang and Contributors</param.authnamewatermark>
-    <param.email>vlabsys@gmail.com</param.email>
-    <param.company>VLAB</param.company>
-    <param.summary>Export Signal and Experimental Dataset, Spike Sorting, Analysis and Register Metadata.</param.summary>
+    <param.email />
+    <param.company>Experica</param.company>
+    <param.summary>Export Dataset and Register Metadata.</param.summary>
     <param.description />
     <param.screenshot>${PROJECT_ROOT}\noun_dataexport_cc.png</param.screenshot>
     <param.guid />
-    <param.installpath.string>\VLAB\DataExport\</param.installpath.string>
+    <param.installpath.string>\Experica\DataExport\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
     <param.logo />
     <param.install.notes />
@@ -43,11 +43,13 @@
     <param.example />
     <param.help.text />
     <unset>
+      <param.email />
       <param.description />
       <param.guid />
       <param.installpath.string />
       <param.installpath.combo />
       <param.logo />
+      <param.install.notes />
       <param.target.install.notes />
       <param.intermediate />
       <param.files.only />
@@ -79,13 +81,13 @@
       <file>${PROJECT_ROOT}\noun_refresh_cc.png</file>
     </fileset.depfun>
     <build-deliverables>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\splash.png</file>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="DataExport.exe" optional="false">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\DataExport.exe</file>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="DataExport.exe" optional="false">C:\Users\Alex\NeuroAnalysis\DataExport\DataExport\for_testing\DataExport.exe</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\Alex\NeuroAnalysis\DataExport\DataExport\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\Alex\NeuroAnalysis\DataExport\DataExport\for_testing\splash.png</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2017b</root>
+      <root>C:\Program Files\MATLAB\R2018a</root>
       <toolboxes>
         <toolbox name="fixedpoint" />
         <toolbox name="matlabcoder" />

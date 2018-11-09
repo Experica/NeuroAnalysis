@@ -40,7 +40,7 @@ if ~strcmp(sourceformat,'Unknown')
 else
     copyfile(datafile,exportpath);
 end
-disp('Exporting Dataset:    Done.');
+disp(['Exporting Dataset:    ',exportpath,'    Done.']);
 %% Callback
 callbackfun = callback{1};
 callbackarg = callback{2};
@@ -48,7 +48,7 @@ callbackresult = [];
 if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
     disp(['Applying Callback:    ',callbackfun,'    ...']);
     callbackresult = NeuroAnalysis.Base.EvalFun(callbackfun,[{dataset},callbackarg]);
-    disp('Applying Callback:    Done.');
+    disp(['Applying Callback:    ',callbackfun,'    Done.']);
 end
 %% Prepare Metadata
 result.meta =[];

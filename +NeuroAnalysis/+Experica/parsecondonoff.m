@@ -2,7 +2,7 @@ function [on,off] = parsecondonoff(ex,dataset,CondDCh,MarkDCh,lsr)
 %PARSECONDONOFF Try to get the most accurate timing of Condition On/Off
 %   Detailed explanation goes here
 
-import NeuroAnalysis.VLab.*
+import NeuroAnalysis.Experica.*
 nct = length(ex.CondTest.CondIndex);
 on = [];off=[];
 if ~isempty(dataset) && isfield(dataset,'digital')
@@ -12,7 +12,7 @@ if ~isempty(dataset) && isfield(dataset,'digital')
     if isdinmark
         dinmarktime = dataset.digital(markdchidx).time;
         dinmarkvalue = dataset.digital(markdchidx).data;
-        if vlabconfig.NMarkPerCond*nct == length(dinmarktime) && all(diff(dinmarkvalue))
+        if 2*nct == length(dinmarktime) && all(diff(dinmarkvalue))
             isdinmarkerror = false;
         end
     end
@@ -23,7 +23,7 @@ if ~isempty(dataset) && isfield(dataset,'digital')
     if isdincond
         dincondtime = dataset.digital(conddchidx).time;
         dincondvalue = dataset.digital(conddchidx).data;
-        if vlabconfig.NMarkPerCond*nct == length(dincondtime) && all(diff(dincondvalue))
+        if 2*nct == length(dincondtime) && all(diff(dincondvalue))
             isdinconderror = false;
         end
     end
@@ -32,15 +32,46 @@ else
     isdincond=false;
 end
 
+    function [isfound,ts,te] = trysearchmarktime(tss,tes,dintime,dinvalue,sr)
+        %TRYSEARCHMARKTIME Try to search mark time
+        
+        msv = dinvalue(1);
+        tssidx=[];tesidx=[];
+        for i=1:length(dinvalue)
+            dts = dintime(i)-tss;
+            dte = dintime(i)-tes;
+            if (dinvalue(i) == msv)
+                if(abs(dts)<=sr)
+                    tssidx=[tssidx,i];
+                end
+            else
+                if(abs(dte)<=sr)
+                    tesidx=[tesidx,i];
+                end
+            end
+            if dts>sr&&dte>sr
+                break;
+            end
+        end
+        if length(tssidx)==1 && length(tesidx)==1
+            ts=dintime(tssidx(1));
+            te=dintime(tesidx(1));
+            isfound=true;
+        else
+            ts=0;te=0;isfound=false;
+        end
+        
+    end
+
 for i=1:nct
     if isdinmark
         if ~isdinmarkerror
-            on(i) = dinmarktime((i-1)*vlabconfig.NMarkPerCond+1);
-            off(i) = dinmarktime((i-1)*vlabconfig.NMarkPerCond+2);
+            on(i) = dinmarktime((i-1)*2+1);
+            off(i) = dinmarktime((i-1)*2+2);
         else
             if isdincond && ~isdinconderror % use digital in condition times if possible
-                tss = dincondtime((i-1)*vlabconfig.NMarkPerCond+1) + ex.Latency;
-                tes = dincondtime((i-1)*vlabconfig.NMarkPerCond+2) + ex.Latency;
+                tss = dincondtime((i-1)*2+1) + ex.Latency;
+                tes = dincondtime((i-1)*2+2) + ex.Latency;
             else
                 tss = ex.CondTest.CondOnTime(i);
                 tes = ex.CondTest.SufICIOnTime(i);
@@ -55,8 +86,8 @@ for i=1:nct
             end
         end
     elseif isdincond && ~isdinconderror
-        on(i) = dincondtime((i-1)*vlabconfig.NMarkPerCond+1) + ex.Latency;
-        off(i) = dincondtime((i-1)*vlabconfig.NMarkPerCond+2) + ex.Latency;
+        on(i) = dincondtime((i-1)*2+1) + ex.Latency;
+        off(i) = dincondtime((i-1)*2+2) + ex.Latency;
     else
         on(i) = ex.CondTest.CondOnTime(i);
         off(i) = ex.CondTest.SufICIOnTime(i);
