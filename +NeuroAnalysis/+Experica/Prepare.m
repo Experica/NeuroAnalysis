@@ -22,11 +22,11 @@ disp(['Reading Experica File:    ',filepath,'    ...']);
 ex = yaml.ReadYaml(filepath);
 disp(['Reading Experica File:    ',filepath,'    Done.']);
 %% Prepare data
-disp(['Preparing Experica Data:    ',filepath,'    ...']);
 if ~isempty(ex)
     if ~isfield(ex,'Version')
         ex.Version=0;
     end
+    disp(['Preparing Experica Data(v',num2str(ex.Version),'):    ',filepath,'    ...']);
     exdataset.ex = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.Experica.prepare',num2str(ex.Version)],{ex,dataset});
     
     exdataset.ex.source = filepath;
@@ -35,6 +35,6 @@ if ~isempty(ex)
     
     exdataset.source = filepath;
     exdataset.sourceformat = 'Experica';
+    disp(['Preparing Experica Data(v',num2str(ex.Version),'):    ',filepath,'    Done.']);
 end
-disp(['Preparing Experica Data:    ',filepath,'    Done.']);
 end
