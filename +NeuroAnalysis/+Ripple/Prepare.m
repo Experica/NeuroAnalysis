@@ -205,7 +205,7 @@ end
 ns_RESULT = ns_CloseFile(hFile);
 disp(['Reading Ripple Files:    ',datafilepath,'.*    Done.']);
 %% Prepare Ripple data
-disp('Preparing Ripple Data    ...');
+disp('Preparing Ripple Data:    ...');
     function y = dinch(x)
         switch x
             case 'Parallel'

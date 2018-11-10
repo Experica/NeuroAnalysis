@@ -153,5 +153,5 @@ if (ftell(hfile)~=dataset.imagehead.filesize)
     warning('Block Is Not Completely Read Out.');
 end
 fclose(hfile);
-disp('Reading File:    Done.');
+disp(['Reading OI Block File:    ',filepath,'    Done.']);
 end

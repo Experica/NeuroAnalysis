@@ -22,6 +22,7 @@ if (~isempty(dataset) && isfield(dataset,'ex'))
     end
 end
 %% Prepare Ripple metadata
+disp('Preparing Ripple Metadata:    ...');
 ripplemeta = [];
 if (~isempty(dataset))
     ripplemeta.files={dataset.filepath};
@@ -40,6 +41,5 @@ if (~isempty(meta) && ~isempty(fieldnames(meta)))
         meta.result = callbackmeta;
     end
 end
-
+disp('Preparing Ripple Metadata:    Done.');
 end
-
