@@ -19,7 +19,7 @@ if ~isa(datafile,'char') || exist(datafile, 'file') ~= 2
 end
 disp(['Reading Dataset:    ',datafile,'    ...']);
 dataset = NeuroAnalysis.IO.loaddataset(datafile,{'any data fields not needed for metadata collection.'});
-disp('Reading Dataset:    Done.');
+disp(['Reading Dataset:    ',datafile,'    Done.']);
 if isempty(dataset)
     return;
 end
