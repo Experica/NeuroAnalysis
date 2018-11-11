@@ -101,7 +101,6 @@ classdef MetaTable < handle
         function index = iquery(obj, keys, values, range, dosort)
             %IQUERY query for matching tests, return indices
             
-            
             if nargin < 4 || isempty(range)
                 range=1:length(obj.Tests);
             else
@@ -145,7 +144,7 @@ classdef MetaTable < handle
             disp(['Saving metadata:    ',filepath,'    ...']);
             metafile.Tests = obj.Tests;
             save(filepath, '-struct', 'metafile', '-v7.3');
-            disp('Saving metadata:    Done.');
+            disp(['Saving metadata:    ',filepath,'    Done.']);
         end
         
         function [missingtest] = validate(obj, dataroot,verbose)

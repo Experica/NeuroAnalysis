@@ -5,4 +5,3 @@ function [i] = FindMetadata(metatable,test,range)
 i = metatable.iquery({'sourceformat'}, {'OI'},range);
 
 end
-

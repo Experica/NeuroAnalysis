@@ -9,4 +9,3 @@ values = struct2cell(searchtemplate);
 i = metatable.iquery(keys, values,range);
 
 end
-
