@@ -158,7 +158,7 @@ classdef MetaTable < handle
             forall = false;
             
             missingtest=[];
-            disp('Validating metadata:   ...');
+            disp('Validating metadata:    ...');
             if isempty(obj.Tests)
                 disp('Validating metadata:   Empty.');
                 return;
