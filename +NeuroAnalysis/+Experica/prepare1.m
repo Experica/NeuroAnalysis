@@ -59,7 +59,7 @@ end
                 ctfets = fct{p};
                 if ~isempty(ctfets)
                     for ti=1:length(ctfets)
-                        t=trysearchtime(ctfets(ti)+latency,data,sr);
+                        t=NeuroAnalysis.Experica.trysearchtime(ctfets(ti)+latency,data,sr);
                         recovered=[recovered,t];
                     end
                 end
@@ -96,6 +96,10 @@ end
         end
     end
     function [uets] = uniqueeventtime(ts,es)
+        if isempty(ts)
+            uets= struct([]);
+            return;
+        end
         ues = unique(es);
         for uei=1:length(ues)
             uets.(ues{uei})=[];
