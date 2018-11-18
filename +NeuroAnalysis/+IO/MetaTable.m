@@ -172,8 +172,7 @@ classdef MetaTable < handle
                 
                 if ~isempty(test.files)
                     for i = length(test.files):-1:1
-                        tf = java.io.File(test.files{i});
-                        if ~tf.isAbsolute
+                        if startsWith(test.files{i}, '.')
                             p=fullfile(dataroot,test.files{i});
                         else
                             p=test.files{i};

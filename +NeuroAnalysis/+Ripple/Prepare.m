@@ -4,13 +4,11 @@ function [ dataset ] = Prepare( filepath,varargin )
 
 p = inputParser;
 addRequired(p,'filepath');
-addOptional(p,'secondperunit',1);
 addOptional(p,'datatype',{'Spike','LFP','Hi-Res','Stim','Analog30k','Analog1k','Digital'}); %'Raw'
 addOptional(p,'electroderange',1:5120);
 addOptional(p,'analogrange',10241:10270);
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
-secondperunit = p.Results.secondperunit;
 datatype = p.Results.datatype;
 electroderange = p.Results.electroderange;
 analogrange = p.Results.analogrange;
@@ -18,19 +16,28 @@ analogrange = p.Results.analogrange;
 import NeuroAnalysis.Ripple.*
 %% Prepare all data files
 dataset = [];
+secondperunit=1;
 [filedir,filename,ext] = fileparts(filepath);
 
-isrippledata= false;
 datafilepath = fullfile(filedir,filename);
-[ns_RESULT, hFile] = ns_OpenFile(datafilepath);
+try
+    [ns_RESULT, hFile] = ns_OpenFile(datafilepath);
+catch e
+    warning('Error Opening Ripple Files:    %s', datafilepath);
+    return;
+end
 if(strcmp(ns_RESULT,'ns_OK'))
     isrippledata = true;
+else
+    warning('Error Opening Ripple Files:    %s', datafilepath);
+    return;
 end
 
 isexdata = false;
 exfilepath =fullfile(filedir,[filename '.yaml']);
 if(exist(exfilepath,'file')==2)
     isexdata = true;
+    secondperunit=0.001;
 end
 
 isvisstimdata = false;
@@ -39,8 +46,8 @@ if(exist(visstimfilepath,'file')==2)
     isvisstimdata = true;
 end
 %% Read Ripple data
-disp(['Reading Ripple Files:    ',datafilepath,'.*    ...']);
 if(isrippledata)
+    disp(['Reading Ripple Files:    ',datafilepath,'.*    ...']);
     [ns_RESULT, nsFileInfo] = ns_GetFileInfo(hFile);
     if(~strcmp(ns_RESULT,'ns_OK'))
         ns_RESULT = ns_CloseFile(hFile);
@@ -195,6 +202,8 @@ if(isrippledata)
                 end
         end
     end
+    ns_RESULT = ns_CloseFile(hFile);
+    disp(['Reading Ripple Files:    ',datafilepath,'.*    Done.']);
 end
 
 if ~isempty(dataset)
@@ -202,10 +211,7 @@ if ~isempty(dataset)
     dataset.secondperunit = secondperunit;
     dataset.sourceformat = 'Ripple';
 end
-ns_RESULT = ns_CloseFile(hFile);
-disp(['Reading Ripple Files:    ',datafilepath,'.*    Done.']);
 %% Prepare Ripple data
-disp('Preparing Ripple Data:    ...');
     function y = dinch(x)
         switch x
             case 'Parallel'
@@ -225,6 +231,7 @@ disp('Preparing Ripple Data:    ...');
     end
 
 if ~isempty(dataset)
+    disp('Preparing Ripple Data:    ...');
     if isfield(dataset,'spike')
         for i=1:length(dataset.spike)
             dataset.spike(i).uuid = sort(unique(dataset.spike(i).unitid));
@@ -235,8 +242,8 @@ if ~isempty(dataset)
             dataset.digital(i).channel = dinch(dataset.digital(i).channel{:});
         end
     end
+    disp('Preparing Ripple Data:    Done.');
 end
-disp('Preparing Ripple Data:    Done.');
 %% Prepare corresponding experimental data
 if(~isempty(dataset))
     if(isexdata)
