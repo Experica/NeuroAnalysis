@@ -37,16 +37,16 @@ end
         
         msv = dinvalue(1);
         tssidx=[];tesidx=[];
-        for i=1:length(dinvalue)
-            dts = dintime(i)-tss;
-            dte = dintime(i)-tes;
-            if (dinvalue(i) == msv)
+        for j=1:length(dinvalue)
+            dts = dintime(j)-tss;
+            dte = dintime(j)-tes;
+            if (dinvalue(j) == msv)
                 if(abs(dts)<=sr)
-                    tssidx=[tssidx,i];
+                    tssidx=[tssidx,j];
                 end
             else
                 if(abs(dte)<=sr)
-                    tesidx=[tesidx,i];
+                    tesidx=[tesidx,j];
                 end
             end
             if dts>sr&&dte>sr
