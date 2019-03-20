@@ -45,14 +45,10 @@ function [ dataset ] = Prepare( filepath,varargin )
 
 p = inputParser;
 addRequired(p,'filepath');
-addOptional(p,'datatype',{'Spike','LFP','Hi-Res','Stim','Analog30k','Analog1k','Digital'}); %'Raw'
-addOptional(p,'electroderange',1:5120);
-addOptional(p,'analogrange',10241:10270);
+addOptional(p,'isspikesorting',1);
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
-datatype = p.Results.datatype;
-electroderange = p.Results.electroderange;
-analogrange = p.Results.analogrange;
+isspikesorting = p.Results.isspikesorting;
 
 import NeuroAnalysis.SpikeGLX.*
 %% Prepare all data files
