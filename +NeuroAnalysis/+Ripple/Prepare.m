@@ -57,7 +57,6 @@ if(isrippledata)
     EntityID = struct;
     EntityFileType = arrayfun(@(e)e.FileType,hFile.Entity);
     EntityType = arrayfun(@(e)e.EntityType,hFile.Entity,'Uniformoutput',false);
-    EntityReason = arrayfun(@(e)e.Reason,hFile.Entity,'Uniformoutput',false);
     EntityElectrodeID = arrayfun(@(e)e.ElectrodeID,hFile.Entity);
     for i = 1:length(hFile.FileInfo)
         switch hFile.FileInfo(i).Type
@@ -73,7 +72,12 @@ if(isrippledata)
                 end
                 if ismember('Digital',datatype)
                     EntityID.Digital = find((EntityFileType==i)&(cellfun( @(x)strcmp(x,'Event'),EntityType)));
-                    Reason = EntityReason(EntityID.Digital);
+                    if isempty(EntityID.Digital)
+                        Reason = [];
+                    else
+                        EntityReason = arrayfun(@(e)e.Reason,hFile.Entity,'Uniformoutput',false);
+                        Reason = EntityReason(EntityID.Digital);
+                    end
                 end
             case 'ns2'
                 if ismember('LFP',datatype)

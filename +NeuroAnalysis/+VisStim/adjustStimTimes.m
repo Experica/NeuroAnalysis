@@ -10,7 +10,10 @@ NMarkPerCond = visstimconfig.NMarkPerCond;
 SearchRadius = visstimconfig.MarkSearchRadius;
 TimerDriftError = visstimconfig.TimerDriftError;
 
-
+if ~isfield(ex, 'CondTest') || ~isfield(ex.CondTest, 'CondIndex')
+    warning('No stimulus times given for %s', ex.source);
+    return;
+end
 
 % Collect digital marks if they exist
 nct = length(ex.CondTest.CondIndex);

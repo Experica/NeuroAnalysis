@@ -130,7 +130,7 @@ classdef MetaTable < handle
             end
             
             % Sort by date
-            if dosort
+            if dosort && ~isempty(index)
                 sorted = sortrows([dates, index],'descend',...
                     'MissingPlacement', 'last');
                 index = sorted(:,2);

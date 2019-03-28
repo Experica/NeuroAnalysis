@@ -131,16 +131,20 @@ ex.BlockParam = [];
 if isfield(ex.raw, 'StimDuration')
     ex.CondDur = ex.raw.StimDuration;
 else
-    ex.CondDur = NaN;
+    ex.CondDur = 0;
 end
-
 if isfield(ex.raw, 'StimInterval')
-    ex.SufICI = ex.raw.StimInterval;
+    if ex.raw.StimInterval > 0.5
+        ex.PreICI = 0.5;
+    else
+        ex.PreICI = ex.raw.StimInterval/2;
+    end
+    ex.SufICI = ex.raw.StimInterval - ex.PreICI;
 else
-    ex.SufICI = NaN;
+    ex.PreICI = 0;
+    ex.SufICI = 0;
 end
 
-ex.PreICI = 0;
 ex.PreITI = 0;
 ex.TrialDur = 0;
 ex.SufITI = 0;
@@ -206,6 +210,15 @@ switch ex.ID
         CondTest.CondIndex = data(:,2);
         Factors.Position = [data(:,3), data(:,4), zeros(size(data,1),1)];
         Factors.Diameter = data(:,5);
+        ex.CondDur = 0.05;
+        ex.SufICI = 0.3;
+    case 'Retinotopy'
+        CondTest.StimOn = data(:,1);
+        CondTest.StimOff = data(:,1) + ex.raw.StimInterval;
+        %CondTest.CondRepeat = data(:,9);
+        CondTest.CondIndex = data(:,2);
+        Factors.Position = [data(:,3), data(:,4), zeros(size(data,1),1)];
+        Factors.Size = data(:,5);
     case 'CatRFdetailed'
         CondTest.StimOn = data(:,1);
         CondTest.StimOff = data(:,1) + ex.CondDur;
@@ -246,12 +259,23 @@ switch ex.ID
         CondTest.CondIndex = data(:,2);
         Factors.Position = [data(:,4), data(:,5), zeros(size(data,1),1)];
         Factors.Color = data(:,3);
+    case {'CenterSurround'} % ori is -1 when either grating is off...
+        CondTest.StimOn = data(:,2);
+        CondTest.StimOff = data(:,2) + data(:,8);
+        CondTest.CondRepeat = data(:,9);
+        CondTest.CondIndex = data(:,1);
+        Factors.CenterOri = data(:,6);
+        Factors.Center = data(:,12) ~= -2;
+        Factors.SurroundOri = data(:,12);
+        Factors.Surround = data(:,12) ~= -1;
+        Factors.SurroundOri(~Factors.Center) = -1;
     otherwise
 
         % StimTimes
         if size(data,2) < 8
             warning(['Unsupported log file: ', ex.source]);
-            ex = [];
+            ex.CondTest = [];
+            ex.CondRepeat = 0;
             return;
         end
         
@@ -282,19 +306,6 @@ for i=1:length(ctnames)
     CondTest.(ctnames{i}) = CondTest.(ctnames{i})(1:nct);
 end
 
-% Generate condition repeat numbers if missing
-if ~isfield(CondTest, 'CondRepeat')
-    repeats = ones(size(unique(CondTest.CondIndex),1),1);
-    for i = 1:length(CondTest.CondIndex)
-        condIndex = CondTest.CondIndex(i);
-        CondTest.CondRepeat(i) = repeats(condIndex);
-        repeats(CondTest.CondIndex(i)) = repeats(CondTest.CondIndex(i)) + 1;
-    end
-    ex.CondRepeat = min(repeats) - 1;
-else
-    ex.CondRepeat = max(CondTest.CondRepeat);
-end
-
 % Split factors to env params and conditions
 CondTestCond = [];
 factorNames = fieldnames(Factors);
@@ -317,6 +328,24 @@ if ~isempty(CondTestCond)
     % Convert Cond fields to cell arrays
     CondTestCond = structfun(@(x)num2cell(x,2), CondTestCond, 'UniformOutput', false);
     Cond = structfun(@(x)num2cell(x,2), Cond, 'UniformOutput', false);
+else
+    CondTest.CondIndex = ones(size(data,1),1);
+    CondTest.CondRepeat = 1:size(data,1);
+    CondTestCond.Null = cell(1,size(data,1));
+    CondTestCond.Null(:) = {0};
+end
+
+% Generate condition repeat numbers if missing
+if ~isfield(CondTest, 'CondRepeat')
+    repeats = zeros(max(CondTest.CondIndex),1);
+    for i = 1:length(CondTest.CondIndex)
+        condIndex = CondTest.CondIndex(i);
+        CondTest.CondRepeat(i) = repeats(condIndex) + 1;
+        repeats(CondTest.CondIndex(i)) = repeats(CondTest.CondIndex(i)) + 1;
+    end
+    ex.CondRepeat = max(repeats);
+else
+    ex.CondRepeat = max(CondTest.CondRepeat);
 end
 
 % Convert CondIndex to integers
