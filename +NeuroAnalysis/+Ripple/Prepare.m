@@ -4,9 +4,9 @@ function [ dataset ] = Prepare( filepath,varargin )
 
 p = inputParser;
 addRequired(p,'filepath');
-addOptional(p,'datatype',{'Spike','LFP','Hi-Res','Stim','Analog30k','Analog1k','Digital'}); %'Raw'
-addOptional(p,'electroderange',1:5120);
-addOptional(p,'analogrange',10241:10270);
+addParameter(p,'datatype',{'Spike','LFP','Hi-Res','Stim','Analog30k','Analog1k','Digital'}); %'Raw'
+addParameter(p,'electroderange',1:5120);
+addParameter(p,'analogrange',10241:10270);
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 datatype = p.Results.datatype;

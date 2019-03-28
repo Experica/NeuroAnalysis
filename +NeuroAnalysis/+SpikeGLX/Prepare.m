@@ -1,8 +1,6 @@
 function [ dataset ] = Prepare( filepath,varargin )
-%PREPARE Read SpikeGLX data, experimental data and prepare dataset
+%PREPARE Read SpikeGLX meta data, experimental data and prepare dataset
 %   Detailed explanation goes here
-
-
 
     function [meta] = ReadMeta(filepath)
         % Parse ini file into cell entries C{1}{i} = C{2}{i}
@@ -28,27 +26,14 @@ function [ dataset ] = Prepare( filepath,varargin )
         meta.nFileSamp = meta.fileSizeBytes/meta.nSavedChans/2;
     end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 p = inputParser;
 addRequired(p,'filepath');
-addOptional(p,'isspikesorting',1);
+addParameter(p,'SpikeSorting','None')
+addParameter(p,'IsConcat',0)
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
-isspikesorting = p.Results.isspikesorting;
+spikesorting = p.Results.SpikeSorting;
+issortconcat = p.Results.IsConcat;
 
 import NeuroAnalysis.SpikeGLX.*
 %% Prepare all data files
@@ -56,17 +41,12 @@ dataset = [];
 secondperunit=1;
 [filedir,filename,ext] = fileparts(filepath);
 
-datafilepath = fullfile(filedir,filename);
-try
-    [ns_RESULT, hFile] = ns_OpenFile(datafilepath);
-catch e
-    warning('Error Opening Ripple Files:    %s', datafilepath);
-    return;
-end
-if(strcmp(ns_RESULT,'ns_OK'))
-    isrippledata = true;
+metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*meta'])),'uniformoutput',0);
+
+if ~isempty(metafilenames)
+    isspikeglxdata = true;
 else
-    warning('Error Opening Ripple Files:    %s', datafilepath);
+    warning('No SpikeGLX Meta Files:    %s', filename);
     return;
 end
 
@@ -77,178 +57,38 @@ if(exist(exfilepath,'file')==2)
     secondperunit=0.001;
 end
 
-isvisstimdata = false;
-visstimfilepath =fullfile(filedir,[filename '.mat']);
-if(exist(visstimfilepath,'file')==2)
-    isvisstimdata = true;
+isstimulatordata = false;
+analyzerfilepath =fullfile(filedir,[filename '.analyzer']);
+if(exist(analyzerfilepath,'file')==2)
+    isstimulatordata = true;
 end
-%% Read Ripple data
-if(isrippledata)
-    disp(['Reading Ripple Files:    ',datafilepath,'.*    ...']);
-    [ns_RESULT, nsFileInfo] = ns_GetFileInfo(hFile);
-    if(~strcmp(ns_RESULT,'ns_OK'))
-        ns_RESULT = ns_CloseFile(hFile);
-        return;
-    end
-    
-    EntityID = struct;
-    EntityFileType = arrayfun(@(e)e.FileType,hFile.Entity);
-    EntityType = arrayfun(@(e)e.EntityType,hFile.Entity,'Uniformoutput',false);
-    EntityReason = arrayfun(@(e)e.Reason,hFile.Entity,'Uniformoutput',false);
-    EntityElectrodeID = arrayfun(@(e)e.ElectrodeID,hFile.Entity);
-    for i = 1:length(hFile.FileInfo)
-        switch hFile.FileInfo(i).Type
-            case 'nev'
-                if ismember('Spike',datatype)
-                    entityid = find(EntityFileType==i);
-                    electrodeid = EntityElectrodeID(entityid);
-                    vch = ismember(electrodeid,electroderange);
-                    if any(vch)
-                        EntityID.Spike = entityid(vch);
-                        ElectrodeID.Spike = electrodeid(vch);
-                    end
-                end
-                if ismember('Digital',datatype)
-                    EntityID.Digital = find((EntityFileType==i)&(cellfun( @(x)strcmp(x,'Event'),EntityType)));
-                    Reason = EntityReason(EntityID.Digital);
-                end
-            case 'ns2'
-                if ismember('LFP',datatype)
-                    entityid = find(EntityFileType==i);
-                    electrodeid = EntityElectrodeID(entityid);
-                    vch = ismember(electrodeid,electroderange);
-                    if any(vch)
-                        EntityID.LFP = entityid(vch);
-                        ElectrodeID.LFP = electrodeid(vch);
-                    end
-                    ns2TimeStamps = hFile.FileInfo(i).TimeStamps;
-                end
-                if ismember('Analog1k',datatype)
-                    entityid = find(EntityFileType==i);
-                    electrodeid = EntityElectrodeID(entityid);
-                    vch = ismember(electrodeid,analogrange);
-                    if any(vch)
-                        EntityID.Analog1k = entityid(vch);
-                        ElectrodeID.Analog1k = electrodeid(vch);
-                    end
-                    ns2TimeStamps = hFile.FileInfo(i).TimeStamps;
-                end
-            case 'ns5'
-                if ismember('Raw',datatype)
-                    entityid = find(EntityFileType==i);
-                    electrodeid = EntityElectrodeID(entityid);
-                    vch = ismember(electrodeid,electroderange);
-                    if any(vch)
-                        EntityID.Raw = entityid(vch);
-                        ElectrodeID.Raw = electrodeid(vch);
-                    end
-                    ns5TimeStamps = hFile.FileInfo(i).TimeStamps;
-                end
-                if ismember('Analog30k',datatype)
-                    entityid = find(EntityFileType==i);
-                    electrodeid = EntityElectrodeID(entityid);
-                    vch = ismember(electrodeid,analogrange);
-                    if any(vch)
-                        EntityID.Analog30k = entityid(vch);
-                        ElectrodeID.Analog30k = electrodeid(vch);
-                    end
-                    ns5TimeStamps = hFile.FileInfo(i).TimeStamps;
-                end
-        end
-    end
-    
-    fdatatype = fieldnames(EntityID);
-    if (isempty(fdatatype))
-        return;
-    end
-    
+%% Read SpikeGLX Meta Data
+if(isspikeglxdata)
+    disp(['Reading SpikeGLX Meta Files:    ',filename,'*.meta    ...']);
     dataset=struct;
-    for f=1:length(fdatatype)
-        switch fdatatype{f}
-            case 'Spike'
-                for e=1:length(ElectrodeID.Spike)
-                    [ns_RESULT, nsEntityInfo] = ns_GetEntityInfo(hFile, EntityID.Spike(e));
-                    
-                    spike = struct;
-                    for i = 1:nsEntityInfo.ItemCount
-                        [ns_RESULT, spike.time(i), spike.data(:,i), ~, spike.unitid(i)] = ns_GetSegmentData(hFile, EntityID.Spike(e), i);
-                    end
-                    if secondperunit~=1
-                        spike.time = spike.time/secondperunit;
-                    end
-                    spike.electrodeid = ElectrodeID.Spike(e);
-                    dataset.spike(e) = spike;
-                end
-            case 'Digital'
-                for e=1:length(Reason)
-                    [ns_RESULT, nsEntityInfo] = ns_GetEntityInfo(hFile, EntityID.Digital(e));
-                    
-                    digital = struct;
-                    for i = 1:nsEntityInfo.ItemCount
-                        [ns_RESULT, digital.time(i), digital.data(i), ~] = ns_GetEventData(hFile, EntityID.Digital(e), i);
-                    end
-                    if secondperunit~=1
-                        digital.time = digital.time/secondperunit;
-                    end
-                    digital.channel = Reason(e);
-                    dataset.digital(e) = digital;
-                end
-            case 'LFP'
-                [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.LFP, 1, ns2TimeStamps(end)-ns2TimeStamps(1));
-                [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.LFP(1));
-                
-                dataset.lfp.data = Data;
-                dataset.lfp.fs = nsAnalogInfo.SampleRate;
-                dataset.lfp.electrodeid = ElectrodeID.LFP;
-                dataset.lfp.time = (ns2TimeStamps/nsAnalogInfo.SampleRate);
-                if secondperunit~=1
-                    dataset.lfp.time = dataset.lfp.time/secondperunit;
-                end
-            case 'Analog1k'
-                [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.Analog1k, 1, ns2TimeStamps(end)-ns2TimeStamps(1));
-                [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.Analog1k(1));
-                
-                dataset.analog1k.data = Data;
-                dataset.analog1k.fs = nsAnalogInfo.SampleRate;
-                dataset.analog1k.electrodeid = ElectrodeID.Analog1k;
-                dataset.analog1k.time = (ns2TimeStamps/nsAnalogInfo.SampleRate);
-                if secondperunit~=1
-                    dataset.analog1k.time = dataset.analog1k.time/secondperunit;
-                end
-            case 'Raw'
-                [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.Raw, 1, ns5TimeStamps(end)-ns5TimeStamps(1));
-                [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.Raw(1));
-                
-                dataset.raw.data = Data;
-                dataset.raw.fs = nsAnalogInfo.SampleRate;
-                dataset.raw.electrodeid = ElectrodeID.Raw;
-                dataset.raw.time = (ns5TimeStamps/nsAnalogInfo.SampleRate);
-                if secondperunit~=1
-                    dataset.raw.time = dataset.raw.time/secondperunit;
-                end
-            case 'Analog30k'
-                [ns_RESULT, Data] = ns_GetAnalogDataBlock(hFile, EntityID.Analog30k, 1, ns5TimeStamps(end)-ns5TimeStamps(1));
-                [ns_RESULT, nsAnalogInfo] = ns_GetAnalogInfo(hFile, EntityID.Analog30k(1));
-                
-                dataset.analog30k.data = Data;
-                dataset.analog30k.fs = nsAnalogInfo.SampleRate;
-                dataset.analog30k.electrodeid = ElectrodeID.Analog30k;
-                dataset.analog30k.time = (ns5TimeStamps/nsAnalogInfo.SampleRate);
-                if secondperunit~=1
-                    dataset.analog30k.time = dataset.analog30k.time/secondperunit;
-                end
+    for i=1:length(metafilenames)
+        m = metafilenames{i};
+        mfile = fullfile(filedir,m);
+        if contains(m,'imec.ap')
+            dataset.ap.metafile = mfile;
+            dataset.ap.meta = ReadMeta(mfile);
+        elseif contains(m,'imec.lf')
+            dataset.lf.metafile = mfile;
+            dataset.lf.meta = ReadMeta(mfile);
+        elseif contains(m,'nidq')
+            dataset.nidq.metafile = mfile;
+            dataset.nidq.meta = ReadMeta(mfile);
         end
     end
-    ns_RESULT = ns_CloseFile(hFile);
-    disp(['Reading Ripple Files:    ',datafilepath,'.*    Done.']);
+    disp(['Reading SpikeGLX Meta Files:    ',filename,'*.meta    Done.']);
 end
 
 if ~isempty(dataset)
-    dataset.source = datafilepath;
+    dataset.source = filename;
     dataset.secondperunit = secondperunit;
-    dataset.sourceformat = 'Ripple';
+    dataset.sourceformat = 'SpikeGLX';
 end
-%% Prepare Ripple data
+%% Prepare SpikeGLX data
     function y = dinch(x)
         switch x
             case 'Parallel'
@@ -268,10 +108,23 @@ end
     end
 
 if ~isempty(dataset)
-    disp('Preparing Ripple Data:    ...');
-    if isfield(dataset,'spike')
-        for i=1:length(dataset.spike)
-            dataset.spike(i).uuid = sort(unique(dataset.spike(i).unitid));
+    disp('Preparing SpikeGLX Data:    ...');
+    for dss={'ap','lf','nidq'}
+        ds=dss{:};
+        if isfield(dataset,ds)
+            samefolderbin = strrep(dataset.(ds).metafile,'meta','bin');
+            if(exist(samefolderbin,'file')==2)
+                dataset.(ds).meta.fileName = samefolderbin;
+            elseif(exist(dataset.(ds).meta.fileName,'file')~=2)
+                warning([upper(ds),' Stream Binaray File: ',dataset.(ds).meta.fileName,' not found.']);
+                dataset.(ds).meta.fileName = '';
+            end
+        end
+    end
+    if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
+        switch spikesorting
+            case 'KiloSort'
+                dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset);
         end
     end
     if isfield(dataset,'digital')
@@ -279,7 +132,7 @@ if ~isempty(dataset)
             dataset.digital(i).channel = dinch(dataset.digital(i).channel{:});
         end
     end
-    disp('Preparing Ripple Data:    Done.');
+    disp('Preparing SpikeGLX Data:    Done.');
 end
 %% Prepare corresponding experimental data
 if(~isempty(dataset))
@@ -288,13 +141,13 @@ if(~isempty(dataset))
         if ~isempty(exdataset)
             dataset.ex = exdataset.ex;
         end
-    elseif(isvisstimdata)
-        visstimdataset = NeuroAnalysis.VisStim.Prepare(visstimfilepath,dataset);
-        if ~isempty(visstimdataset)
-            dataset.ex = visstimdataset;
+    elseif(isstimulatordata)
+        stimulatordataset = NeuroAnalysis.Stimulator.Prepare(analyzerfilepath,dataset);
+        if ~isempty(stimulatordataset)
+            dataset.ex = stimulatordataset;
         end
     end
-    % Ripple data is useless without experimental data
+    % SpikeGLX data is useless without experimental data
     if ~isfield(dataset, 'ex') || isempty(dataset.ex)
         dataset = [];
     end
