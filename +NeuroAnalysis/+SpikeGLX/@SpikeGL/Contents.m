@@ -43,6 +43,12 @@
 %
 % StopRun( my_s );  % stop run and clean up
 %
+% StreamID
+% --------
+%
+% Several functions work for either the NI data stream or for any of the
+% N enabled IMEC probe streams. StreamID = -1 selects NI. Values in the
+% range [0,..,N-1] select an IMEC stream.
 %
 % FUNCTION REFERENCE
 % ------------------
@@ -175,6 +181,11 @@
 %
 %                Returns 1 if graphs currently sorted in user order.
 %
+%    dstSample = MapSample( myobj, dstStream, srcSample, srcStream )
+%
+%                Returns sample in dst stream corresponding to
+%                given sample in src stream.
+%
 %    res = Par2( myobj, op, filename )
 %
 %                Create, Verify, or Repair Par2 redundancy files for
@@ -243,6 +254,18 @@
 %
 %                Set the run name for the next time files are created
 %                (either by SetTrgEnable() or by StartRun()).
+%
+%    myobj = SetTriggerOffBeep( myobj, hertz, millisec )
+%
+%                Set frequency and duration of Windows beep signalling
+%                file closure. hertz=0 disables the beep. Command has
+%                no effect if not currently running.
+%
+%    myobj = SetTriggerOnBeep( myobj, hertz, millisec )
+%
+%                Set frequency and duration of Windows beep signalling
+%                file creation. hertz=0 disables the beep. Command has
+%                no effect if not currently running.
 %
 %    myobj = StartRun( myobj )
 %    myobj = StartRun( myobj, params )
