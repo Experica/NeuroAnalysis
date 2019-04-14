@@ -24,6 +24,7 @@ function [ dataset ] = Prepare( filepath,varargin )
             meta = setfield(meta, tag, v);
         end
         meta.nFileSamp = meta.fileSizeBytes/meta.nSavedChans/2;
+        meta.fileDate = datenum(meta.fileCreateTime,'yyyy-mm-ddTHH:MM:SS');
     end
 
 p = inputParser;
@@ -34,14 +35,13 @@ parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 spikesorting = p.Results.SpikeSorting;
 issortconcat = p.Results.IsConcat;
-
-import NeuroAnalysis.SpikeGLX.*
+global batchexportcallback
 %% Prepare all data files
 dataset = [];
 secondperunit=1;
 [filedir,filename,ext] = fileparts(filepath);
 
-metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*meta'])),'uniformoutput',0);
+metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.meta'])),'uniformoutput',0);
 
 if ~isempty(metafilenames)
     isspikeglxdata = true;
@@ -89,24 +89,6 @@ if ~isempty(dataset)
     dataset.sourceformat = 'SpikeGLX';
 end
 %% Prepare SpikeGLX data
-    function y = dinch(x)
-        switch x
-            case 'Parallel'
-                y=5;
-            case 'SMA 1'
-                y=1;
-            case 'SMA 2'
-                y=2;
-            case 'SMA 3'
-                y=3;
-            case 'SMA 4'
-                y=4;
-            otherwise
-                y=0;
-        end
-        y=uint16(y);
-    end
-
 if ~isempty(dataset)
     disp('Preparing SpikeGLX Data:    ...');
     for dss={'ap','lf','nidq'}
@@ -122,20 +104,19 @@ if ~isempty(dataset)
         end
     end
     if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
-        switch spikesorting
-            case 'KiloSort'
-                dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset);
-        end
-    end
-    if isfield(dataset,'digital')
-        for i=1:length(dataset.digital)
-            dataset.digital(i).channel = dinch(dataset.digital(i).channel{:});
+        if iscell(batchexportcallback) && issortconcat && ~strcmp(spikesorting,'None')
+            batchexportcallback{1}=['NeuroAnalysis.SpikeGLX.',spikesorting];
+        else
+            switch spikesorting
+                case 'KiloSort'
+                    dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset);
+            end
         end
     end
     disp('Preparing SpikeGLX Data:    Done.');
 end
 %% Prepare corresponding experimental data
-if(~isempty(dataset))
+if ~isempty(dataset)
     if(isexdata)
         exdataset = NeuroAnalysis.Experica.Prepare(exfilepath,dataset);
         if ~isempty(exdataset)

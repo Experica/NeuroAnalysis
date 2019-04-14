@@ -1,5 +1,5 @@
-function [ meta ] = PrepareMetadata( dataset,callbackresult )
-%PREPAREMETADATA Prepare Ripple metadata for exported dataset and its callbackresult
+function [meta] = PrepareMetadata(dataset,callbackresult)
+%PREPAREMETADATA Prepare SpikeGLX metadata for exported dataset and its callbackresult
 %   Detailed explanation goes here
 
 meta=[];
@@ -21,13 +21,13 @@ if (~isempty(dataset) && isfield(dataset,'ex'))
         exmeta = rmfield(exmeta,'files');
     end
 end
-%% Prepare Ripple metadata
-disp('Preparing Ripple Metadata:    ...');
-ripplemeta = [];
-if (~isempty(dataset))
-    ripplemeta.files={dataset.filepath};
-    [~, ripplemeta.filename, ~] = fileparts(dataset.filepath);
-    ripplemeta.sourceformat = dataset.sourceformat;
+%% Prepare SpikeGLX metadata
+disp('Preparing SpikeGLX Metadata:    ...');
+spikeglxmeta = [];
+if ~isempty(dataset)
+    spikeglxmeta.files={dataset.filepath};
+    [~, spikeglxmeta.filename, ~] = fileparts(dataset.filepath);
+    spikeglxmeta.sourceformat = dataset.sourceformat;
 end
 %% Get Callback metadata
 callbackmeta = [];
@@ -35,11 +35,12 @@ if(~isempty(callbackresult) && isfield(callbackresult,'result')) && isstruct(cal
     callbackmeta = callbackresult.result;
 end
 %% Combine metadata
-meta = NeuroAnalysis.Base.mergestruct(exmeta,ripplemeta);
+meta = NeuroAnalysis.Base.mergestruct(exmeta,spikeglxmeta);
 if (~isempty(meta) && ~isempty(fieldnames(meta)))
     if (~isempty(callbackmeta) && ~isempty(fieldnames(callbackmeta)))
         meta.result = callbackmeta;
     end
 end
-disp('Preparing Ripple Metadata:    Done.');
+disp('Preparing SpikeGLX Metadata:    Done.');
 end
+
