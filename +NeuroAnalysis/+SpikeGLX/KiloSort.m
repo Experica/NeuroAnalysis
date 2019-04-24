@@ -14,9 +14,11 @@ if iscell(dataset)
     binfilensample = binfilensample(isort);
     datasets=datasets(isort);
     % get concat file name
-    concatname=cell(size(binfiles));
+    binrootdir = fileparts(binfiles{1});
+    concatname=cell(1,length(binfiles)+1);
+    concatname{1} = datasets{1}.source(1:8);
     for i=1:length(binfiles)
-        [binrootdir,concatname{i},~] = fileparts(binfiles{i});
+        concatname{i+1} = datasets{i}.source(10:12);
     end
     concatname=strjoin(concatname,'__');
     concatfilepath = fullfile(binrootdir,[concatname,'.bin']);
