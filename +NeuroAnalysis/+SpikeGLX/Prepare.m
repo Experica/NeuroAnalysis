@@ -49,21 +49,12 @@ if(exist(exfilepath,'file')==2)
 end
 
 isstimulatordata = false;
-
-% analyzerFile = dir(strcat(filedir, '\', '*.analyzer'));
-% 
-% if length(filename) > length(analyzerFile(1).name)
-%     analyzerName = filename(1:12);
-% else
-%     analyzerName = filename;
-% end
-
 analyzerfilepath =fullfile(filedir,[filename, '.analyzer']);
 if(exist(analyzerfilepath,'file')==2)
     isstimulatordata = true;
 end
 
-metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.meta'])),'uniformoutput',0);   % Find meta file from the name of analyzer file
+metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.meta'])),'uniformoutput',0); % Find meta file from the name of analyzer file
 if ~isempty(metafilenames)
     isspikeglxdata = true;
 else
