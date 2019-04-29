@@ -19,8 +19,8 @@ if iscell(dataset)
         [binrootdir,concatname{i},~] = fileparts(binfiles{i});
     end
     concatname=[strjoin(concatname,'__'),'.bin'];
-    if length(concatname)>256
-        concatname = concatname(1:256); % max file name limit on NTFS
+    if length(concatname)>240
+        concatname = concatname(1:240); % max file/folder name length on NTFS
     end
     concatfilepath = fullfile(binrootdir,concatname);
     % concat binary files
