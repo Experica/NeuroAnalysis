@@ -14,14 +14,15 @@ if iscell(dataset)
     binfilensample = binfilensample(isort);
     datasets=datasets(isort);
     % get concat file name
-    binrootdir = fileparts(binfiles{1});
-    concatname=cell(1,length(binfiles)+1);
-    concatname{1} = datasets{1}.source(1:8);
+    concatname=cell(size(binfiles));
     for i=1:length(binfiles)
-        concatname{i+1} = datasets{i}.source(10:12);
+        [binrootdir,concatname{i},~] = fileparts(binfiles{i});
     end
-    concatname=strjoin(concatname,'__');
-    concatfilepath = fullfile(binrootdir,[concatname,'.bin']);
+    concatname=[strjoin(concatname,'__'),'.bin'];
+    if length(concatname)>256
+        concatname = concatname(1:256); % max file name limit on NTFS
+    end
+    concatfilepath = fullfile(binrootdir,concatname);
     % concat binary files
     if exist(concatfilepath,'file')
         disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
