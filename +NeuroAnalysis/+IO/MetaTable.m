@@ -143,8 +143,13 @@ classdef MetaTable < handle
             
             disp(['Saving metadata:    ',filepath,'    ...']);
             metafile.Tests = obj.Tests;
-            save(filepath, '-struct', 'metafile', '-v7.3');
-            disp(['Saving metadata:    ',filepath,'    Done.']);
+            status='Fail';
+            try
+                save(filepath, '-struct', 'metafile', '-v7.3');
+                status='Done';
+            catch
+            end
+            disp(['Saving metadata:    ',filepath,'    ',status,'.']);
         end
         
         function [missingtest] = validate(obj, dataroot,verbose)
