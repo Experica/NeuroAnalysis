@@ -14,14 +14,25 @@ if iscell(dataset)
     binfilensample = binfilensample(isort);
     datasets=datasets(isort);
     % get concat file name
-    concatname=cell(size(binfiles));
-    for i=1:length(binfiles)
-        [binrootdir,concatname{i},~] = fileparts(binfiles{i});
+    if strcmp(datasets{1, 1}.ex.sourceformat, 'Stimulator')
+        binrootdir = fileparts(binfiles{1});
+        concatname=cell(1,length(binfiles)+1);
+        concatname{1} = datasets{1}.source(1:8);  % Works for AE9, not AE4 yet!
+        for i=1:length(binfiles)
+            concatname{i+1} = datasets{i}.source(10:12);
+        end
+        concatname=[strjoin(concatname,'__'),'.bin'];
+    else  % Experica, need double check!!!!!! PL
+        concatname=cell(size(binfiles));
+        for i=1:length(binfiles)
+            [binrootdir,concatname{i},~] = fileparts(binfiles{i});
+        end
+        concatname=[strjoin(concatname,'__'),'.bin'];
+        if length(concatname)>240
+            concatname = concatname(1:240); % max file/folder name length on NTFS
+        end
     end
-    concatname=[strjoin(concatname,'__'),'.bin'];
-    if length(concatname)>240
-        concatname = concatname(1:240); % max file/folder name length on NTFS
-    end
+
     concatfilepath = fullfile(binrootdir,concatname);
     % concat binary files
     if exist(concatfilepath,'file')
