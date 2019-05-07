@@ -23,7 +23,8 @@ function [ dataset ] = Prepare( filepath,varargin )
             end
             meta = setfield(meta, tag, v);
         end
-        meta.nFileSamp = meta.fileSizeBytes/meta.nSavedChans/2;
+        meta.nFileSamp = int64(meta.fileSizeBytes/meta.nSavedChans/2);
+        meta.nSavedChans = int64(meta.nSavedChans);
         meta.fileDate = datenum(meta.fileCreateTime,'yyyy-mm-ddTHH:MM:SS');
     end
 
@@ -94,13 +95,61 @@ if ~isempty(dataset)
     for dss={'ap','lf','nidq'}
         ds=dss{:};
         if isfield(dataset,ds)
+            meta = dataset.(ds).meta;
+            
             samefolderbin = strrep(dataset.(ds).metafile,'meta','bin');
             if(exist(samefolderbin,'file')==2)
-                dataset.(ds).meta.fileName = samefolderbin;
-            elseif(exist(dataset.(ds).meta.fileName,'file')~=2)
-                warning([upper(ds),' Stream Binaray File: ',dataset.(ds).meta.fileName,' not found.']);
-                dataset.(ds).meta.fileName = '';
+                meta.fileName = samefolderbin;
+            elseif(exist(meta.fileName,'file')~=2)
+                warning([upper(ds),' Stream Binaray File: ',meta.fileName,' not found.']);
+                meta.fileName = '';
             end
+            
+            if strcmp(meta.typeThis,'imec')
+                meta.fs = meta.imSampRate;
+                % factor for converting 16-bit file data to voltage
+                meta.fi2v = meta.imAiRangeMax / 512;
+                meta.snsApLfSy = int64(meta.snsApLfSy);
+                
+                % imec readout table
+                C = textscan(meta.imroTbl, '(%d %d %d %d %d', ...
+                    'EndOfLine', ')', 'HeaderLines', 1 );
+                meta.roch = int64(cell2mat(C(1)));
+                meta.robank = int64(cell2mat(C(2)));
+                meta.rorefch = int64(cell2mat(C(3)));
+                meta.apgain = cell2mat(C(4));
+                meta.lfgain = cell2mat(C(5));
+                % 1-based index of reference IDs for probe option
+                if meta.imProbeOpt<4
+                    meta.refch = int64([36, 75, 112, 151, 188, 227, 264, 303, 340, 379]+1);
+                else
+                    meta.refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
+                end
+                if isfield(meta,'snsShankMap')
+                    C = textscan(meta.snsShankMap, '(%d:%d:%d:%*s', ...
+                        'EndOfLine', ')', 'HeaderLines', 1 );
+                    meta.shank = int64(cell2mat(C(1))+1);
+                    meta.col = int64(cell2mat(C(2))+1);
+                    meta.row = int64(cell2mat(C(3))+1);
+                    meta.nshank = max(meta.shank);
+                    meta.ncol= max(meta.col);
+                    meta.nrow = max(meta.row);
+                end
+            else
+                meta.fs = meta.niSampRate;
+                meta.fi2v = meta.niAiRangeMax / 32768;
+                meta.snsMnMaXaDw = int64(meta.snsMnMaXaDw);
+            end
+            
+            % Return original channel IDs, because the ith channel in the file isn't necessarily
+            % the ith acquired channel, so it could be used to index ith stored to original.
+            if ischar(meta.snsSaveChanSubset) && strcmp(meta.snsSaveChanSubset, 'all')
+                meta.chans = int64(1:meta.nSavedChans);
+            else
+                meta.chans = int64(meta.snsSaveChanSubset+1);
+            end
+            
+            dataset.(ds).meta = meta;
         end
     end
     if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
