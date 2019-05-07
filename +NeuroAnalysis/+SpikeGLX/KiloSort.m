@@ -32,7 +32,7 @@ if iscell(dataset)
             concatname = concatname(1:240); % max file/folder name length on NTFS
         end
     end
-
+    
     concatfilepath = fullfile(binrootdir,concatname);
     % concat binary files
     if exist(concatfilepath,'file')
@@ -183,14 +183,27 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
     function [spike]=extractrez(rez)
         spike.fs = rez.ops.fs;
         spike.time = NeuroAnalysis.Base.sample2time(rez.st3(:,1),spike.fs,dataset.secondperunit);
-        spike.template = uint32(rez.st3(:,2));
+        spike.cluster = int64(rez.st3(:,2));
         spike.amplitude = rez.st3(:,3);
-        if size(rez.st3,2)>4
-            spike.cluster = uint32(rez.st3(:,5));
-        else
-            spike.cluster = spike.template;
-        end
         
+        rez.W = gather(single(rez.Wphy));
+        rez.U = gather(single(rez.U));
+        nt0 = size(rez.W,1);
+        U = rez.U;
+        W = rez.W;
+        
+        Nch = rez.ops.Nchan;
+        Nfilt = size(W,2);
+        templates = zeros(Nch, nt0, Nfilt, 'single');
+        for iNN = 1:size(templates,3)
+            templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
+        end
+        spike.template = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
+        spike.templateindex = repmat(1:size(templates,3), size(templates,1), 1);
+        spike.channelposition = [rez.xcoords(:) rez.ycoords(:)];
+        spike.good = rez.good;
+        
+        rez.ops.igood = gather(rez.ops.igood);
         spike.ops = rez.ops;
     end
 %%
