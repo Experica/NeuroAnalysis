@@ -14,25 +14,23 @@ if iscell(dataset)
     binfilensample = binfilensample(isort);
     datasets=datasets(isort);
     % get concat file name
-    if strcmp(datasets{1, 1}.ex.sourceformat, 'Stimulator')
+    if strcmp(datasets{1}.ex.sourceformat, 'Stimulator')
         binrootdir = fileparts(binfiles{1});
         concatname=cell(1,length(binfiles)+1);
         concatname{1} = datasets{1}.source(1:8);  % Works for AE9, not AE4 yet!
         for i=1:length(binfiles)
             concatname{i+1} = datasets{i}.source(10:12);
         end
-        concatname=[strjoin(concatname,'__'),'.bin'];
-    else  % Experica, need double check!!!!!! PL
+    else
         concatname=cell(size(binfiles));
         for i=1:length(binfiles)
             [binrootdir,concatname{i},~] = fileparts(binfiles{i});
         end
-        concatname=[strjoin(concatname,'__'),'.bin'];
-        if length(concatname)>240
-            concatname = concatname(1:240); % max file/folder name length on NTFS
-        end
     end
-    
+    concatname=[strjoin(concatname,'__'),'.bin'];
+    if length(concatname)>240
+        concatname = concatname(1:240); % limit file/folder name length on NTFS
+    end
     concatfilepath = fullfile(binrootdir,concatname);
     % concat binary files
     if exist(concatfilepath,'file')
@@ -85,7 +83,7 @@ ops.fbinary = dataset.ap.meta.fileName;
 ops.chanMap = fullfile(thisdir,'neuropixPhase3A_kilosortChanMap.mat');
 
 % sample rate
-ops.fs = dataset.ap.meta.imSampRate;
+ops.fs = dataset.ap.meta.fs;
 
 % frequency for high pass filtering (150)
 ops.fshigh = 150;
@@ -121,7 +119,7 @@ ops.fproc = fullfile(binrootdir,'kilosort_temp_wh.dat');
 ops.trange = [0 Inf];
 
 % total number of channels in your recording
-ops.NchanTOT    = dataset.ap.meta.nSavedChans;
+ops.NchanTOT = double(dataset.ap.meta.nSavedChans);
 
 % common average referencing by median
 ops.CAR = 1;
@@ -183,7 +181,7 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
     function [spike]=extractrez(rez)
         spike.fs = rez.ops.fs;
         spike.time = NeuroAnalysis.Base.sample2time(rez.st3(:,1),spike.fs,dataset.secondperunit);
-        spike.cluster = int64(rez.st3(:,2));
+        spike.template = int64(rez.st3(:,2));
         spike.amplitude = rez.st3(:,3);
         
         rez.W = gather(single(rez.Wphy));
@@ -198,10 +196,13 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
         for iNN = 1:size(templates,3)
             templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
         end
-        spike.template = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
-        spike.templateindex = repmat(1:size(templates,3), size(templates,1), 1);
+        spike.templates = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
+        spike.chanmap = int64(rez.ops.chanMap(:));
         spike.channelposition = [rez.xcoords(:) rez.ycoords(:)];
+        spike.whiteningmatrix = rez.Wrot/rez.ops.scaleproc;
+        spike.whiteningmatrixinv = spike.whiteningmatrix^-1;
         spike.good = rez.good;
+        spike.contamrate = rez.est_contam_rate;
         
         rez.ops.igood = gather(rez.ops.igood);
         spike.ops = rez.ops;
@@ -213,6 +214,5 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
         sspike.time=spike.time(si);
         sspike.template=spike.template(si);
         sspike.amplitude=spike.amplitude(si);
-        sspike.cluster=spike.cluster(si);
     end
 end
