@@ -54,7 +54,7 @@ if iscell(dataset)
     dataset=struct;
     dataset.secondperunit = datasets{1}.secondperunit;
     dataset.ap.meta.fileName=concatfilepath;
-    dataset.ap.meta.imSampRate = datasets{1}.ap.meta.imSampRate;
+    dataset.ap.meta.fs = datasets{1}.ap.meta.fs;
     dataset.ap.meta.nSavedChans= nch;
     dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset);
     % split sorting result into each original dataset
