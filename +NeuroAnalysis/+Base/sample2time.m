@@ -9,7 +9,7 @@ elseif nargin==3
     zerotimesampleindex=1;
 end
 
-t=(sampleindex-zerotimesampleindex)/fs/secondperunit;
+t=double(sampleindex-zerotimesampleindex)/fs/secondperunit;
 
 end
 
