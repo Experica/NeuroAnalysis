@@ -126,10 +126,10 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         import NeuroAnalysis.Base.*
         
         if isfield(dataset,'nidq') && ~isempty(dataset.nidq.meta.fileName)
-            nsample=dataset.nidq.meta.nFileSamp;
-            fs = dataset.nidq.meta.niSampRate;
+            nsample=double(dataset.nidq.meta.nFileSamp);
+            fs = dataset.nidq.meta.fs;
             chns = dataset.nidq.meta.snsMnMaXaDw;
-            chn = dataset.nidq.meta.nSavedChans;
+            chn = double(dataset.nidq.meta.nSavedChans);
             if chns(2)>0
                 binmap = memmapfile(dataset.nidq.meta.fileName,'Format',{'int16',[chn,nsample],'nidq'});
                 
@@ -140,7 +140,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ex.nidq.digital(1).value=dv;
                 
                 if strcmpi(ex.DisplayType,'crt')
-                    [di,dv,pd]=parsecrtdigitalinanalog(binmap.Data.nidq(1,:),600,1500,1300);
+                    [di,dv,pd]=parsecrtdigitalinanalog(binmap.Data.nidq(1,:),300,1500,1300);
                     % correct CRT scan, because upperleft corner photodiode only detects the first scan line.
                     di = di + round(pd*ex.EnvParam.y_pos/ex.EnvParam.ScreenResolution(2));
                 else

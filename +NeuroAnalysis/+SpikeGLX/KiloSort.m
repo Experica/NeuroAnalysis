@@ -14,14 +14,24 @@ if iscell(dataset)
     binfilensample = binfilensample(isort);
     datasets=datasets(isort);
     % get concat file name
-    binrootdir = fileparts(binfiles{1});
-    concatname=cell(1,length(binfiles)+1);
-    concatname{1} = datasets{1}.source(1:8);
-    for i=1:length(binfiles)
-        concatname{i+1} = datasets{i}.source(10:12);
+    if strcmp(datasets{1}.ex.sourceformat, 'Stimulator')
+        binrootdir = fileparts(binfiles{1});
+        concatname=cell(1,length(binfiles)+1);
+        concatname{1} = datasets{1}.source(1:8);  % Works for AE9, not AE4 yet!
+        for i=1:length(binfiles)
+            concatname{i+1} = datasets{i}.source(10:12);
+        end
+    else
+        concatname=cell(size(binfiles));
+        for i=1:length(binfiles)
+            [binrootdir,concatname{i},~] = fileparts(binfiles{i});
+        end
     end
-    concatname=strjoin(concatname,'__');
-    concatfilepath = fullfile(binrootdir,[concatname,'.bin']);
+    concatname=[strjoin(concatname,'__'),'.bin'];
+    if length(concatname)>240
+        concatname = concatname(1:240); % limit file/folder name length on NTFS
+    end
+    concatfilepath = fullfile(binrootdir,concatname);
     % concat binary files
     if exist(concatfilepath,'file')
         disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
@@ -44,7 +54,7 @@ if iscell(dataset)
     dataset=struct;
     dataset.secondperunit = datasets{1}.secondperunit;
     dataset.ap.meta.fileName=concatfilepath;
-    dataset.ap.meta.imSampRate = datasets{1}.ap.meta.imSampRate;
+    dataset.ap.meta.fs = datasets{1}.ap.meta.fs;
     dataset.ap.meta.nSavedChans= nch;
     dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset);
     % split sorting result into each original dataset
@@ -73,7 +83,7 @@ ops.fbinary = dataset.ap.meta.fileName;
 ops.chanMap = fullfile(thisdir,'neuropixPhase3A_kilosortChanMap.mat');
 
 % sample rate
-ops.fs = dataset.ap.meta.imSampRate;
+ops.fs = dataset.ap.meta.fs;
 
 % frequency for high pass filtering (150)
 ops.fshigh = 150;
@@ -109,7 +119,7 @@ ops.fproc = fullfile(binrootdir,'kilosort_temp_wh.dat');
 ops.trange = [0 Inf];
 
 % total number of channels in your recording
-ops.NchanTOT    = dataset.ap.meta.nSavedChans;
+ops.NchanTOT = double(dataset.ap.meta.nSavedChans);
 
 % common average referencing by median
 ops.CAR = 1;
@@ -171,23 +181,38 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
     function [spike]=extractrez(rez)
         spike.fs = rez.ops.fs;
         spike.time = NeuroAnalysis.Base.sample2time(rez.st3(:,1),spike.fs,dataset.secondperunit);
-        spike.template = uint32(rez.st3(:,2));
+        spike.template = int64(rez.st3(:,2));
         spike.amplitude = rez.st3(:,3);
-        if size(rez.st3,2)>4
-            spike.cluster = uint32(rez.st3(:,5));
-        else
-            spike.cluster = spike.template;
-        end
         
+        rez.W = gather(single(rez.Wphy));
+        rez.U = gather(single(rez.U));
+        nt0 = size(rez.W,1);
+        U = rez.U;
+        W = rez.W;
+        
+        Nch = rez.ops.Nchan;
+        Nfilt = size(W,2);
+        templates = zeros(Nch, nt0, Nfilt, 'single');
+        for iNN = 1:size(templates,3)
+            templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
+        end
+        spike.templates = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
+        spike.chanmap = int64(rez.ops.chanMap(:));
+        spike.channelposition = [rez.xcoords(:) rez.ycoords(:)];
+        spike.whiteningmatrix = rez.Wrot/rez.ops.scaleproc;
+        spike.whiteningmatrixinv = spike.whiteningmatrix^-1;
+        spike.good = rez.good;
+        spike.contamrate = rez.est_contam_rate;
+        
+        rez.ops.igood = gather(rez.ops.igood);
         spike.ops = rez.ops;
     end
 %%
     function [sspike]=splitspike(spike,range)
         sspike=spike;
         si = find(spike.time>= range(1) & spike.time< range(2));
-        sspike.time=spike.time(si);
+        sspike.time=spike.time(si)-range(1);
         sspike.template=spike.template(si);
         sspike.amplitude=spike.amplitude(si);
-        sspike.cluster=spike.cluster(si);
     end
 end
