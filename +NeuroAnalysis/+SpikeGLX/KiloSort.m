@@ -211,7 +211,7 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
     function [sspike]=splitspike(spike,range)
         sspike=spike;
         si = find(spike.time>= range(1) & spike.time< range(2));
-        sspike.time=spike.time(si);
+        sspike.time=spike.time(si)-range(1);
         sspike.template=spike.template(si);
         sspike.amplitude=spike.amplitude(si);
     end
