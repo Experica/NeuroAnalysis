@@ -76,9 +76,19 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
             ip=p.param{i};
             ex.EnvParam.(ip{1})=ip{3};
         end
-        ex.PreICI = ex.EnvParam.predelay;
-        ex.CondDur = ex.EnvParam.stim_time;
-        ex.SufICI = ex.EnvParam.postdelay;
+        switch ex.ID
+            case 'FG'
+                ex.PreITI = ex.EnvParam.predelay;
+                ex.TrialDur = ex.EnvParam.stim_time;
+                ex.SufITI = ex.EnvParam.postdelay;
+                ex.PreICI = 0;
+                ex.CondDur = ex.EnvParam.h_per;
+                ex.SufICI = 0;
+            case 'PG'
+                ex.PreICI = ex.EnvParam.predelay;
+                ex.CondDur = ex.EnvParam.stim_time;
+                ex.SufICI = ex.EnvParam.postdelay;
+        end
         
         ex.EnvParam.ScreenToEye = m.screenDist;
         ex.EnvParam.ScreenResolution = [m.xpixels m.ypixels];
@@ -128,9 +138,8 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         if isfield(dataset,'nidq') && ~isempty(dataset.nidq.meta.fileName)
             nsample=double(dataset.nidq.meta.nFileSamp);
             fs = dataset.nidq.meta.fs;
-            chns = dataset.nidq.meta.snsMnMaXaDw;
             chn = double(dataset.nidq.meta.nSavedChans);
-            if chns(2)>0
+            if chn>0
                 binmap = memmapfile(dataset.nidq.meta.fileName,'Format',{'int16',[chn,nsample],'nidq'});
                 
                 ex.nidq.fs=fs;
@@ -152,20 +161,21 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 
                 if ex.nCondTest == length(ex.nidq.digital(1).time)/2
                     if strcmp(ex.ID,'FG') && ex.PreICI==0 && ex.SufICI==0
-                        ex.CondTestCond.TrialOn_nidq = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
-                        ex.CondTestCond.TrialOff_nidq= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufICI;
+                        ex.CondTest.TrialOn_nidq = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreITI;
+                        ex.CondTest.TrialOff_nidq= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufITI;
                         odt=ex.nidq.digital(2).time;
-                        oneframepulseindex=find(abs(diff(odt))<pd*1.5);
+                        oneframepulseindex=find(diff(odt)<pd*1.5);
                         odt([oneframepulseindex,oneframepulseindex+1])=[];
-                        ex.CondTestCond.CondOn_nidq = sample2time(odt(1:2:end),ex.nidq.fs,dataset.secondperunit);
-                        ex.CondTestCond.CondOff_nidq= sample2time(odt(2:2:end),ex.nidq.fs,dataset.secondperunit);
+                        ex.CondTest.CondOn_nidq = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
+                        ex.CondDur = ex.CondDur*pd/ex.nidq.fs;
+                        ex.CondTest.CondOff_nidq= [ex.CondTestCond.CondOn_nidq(2:end),ex.CondTestCond.CondOn_nidq(end)+ex.CondDur];
                     else
                         if ex.nCondTest == length(ex.nidq.digital(2).time)/4
-                            ex.CondTestCond.CondOn_nidq=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
-                            ex.CondTestCond.CondOff_nidq=sample2time(ex.nidq.digital(2).time(3:4:end),ex.nidq.fs,dataset.secondperunit);
+                            ex.CondTest.CondOn_nidq=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
+                            ex.CondTest.CondOff_nidq=sample2time(ex.nidq.digital(2).time(3:4:end),ex.nidq.fs,dataset.secondperunit);
                         else
-                            ex.CondTestCond.CondOn_nidq = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
-                            ex.CondTestCond.CondOff_nidq= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufICI;
+                            ex.CondTest.CondOn_nidq = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
+                            ex.CondTest.CondOff_nidq= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufICI;
                         end
                     end
                 end

@@ -11,12 +11,12 @@ classdef ExFactorStandard
         Visible = {'bool', {'visible', 'on'}}
         Position = {'xy', {'position', 'xyposition', 'location'}}
         Contrast = {'double', {'contrast', 'con'}}
-        SpatialFreq = {'double', {'spatialfreq', 'spatialfrequency', 'sf', 'sfreq'}}
+        SpatialFreq = {'double', {'spatialfreq', 'spatialfrequency', 'sf', 'sfreq','s_freq'}}
         TemporalFreq = {'double', {'temporalfreq', 'temporalfrequency', 'tf', 'tfreq'}}
         GratingType = {'string', {'gratingtype', 'grating'}}
         BGColor = {'color', {'bgcolor', 'bg', 'blankcolor'}}
         
     end
-
+    
 end
 

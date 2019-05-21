@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="2039816416" file="C:\Users\Alex\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\Alex\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="2039816416" file="C:\Users\anupam\NeuroAnalysis\DataExport\DataExport.prj" location="C:\Users\anupam\NeuroAnalysis\DataExport" name="DataExport" preferred-package-location="C:\Users\fff00\NeuroAnalysis\DataExport\DataExport\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>DataExport</param.appname>
     <param.icon>${PROJECT_ROOT}\DataExport_resources\icon.ico</param.icon>
     <param.icons>
@@ -41,7 +41,12 @@
     <param.native.matlab>false</param.native.matlab>
     <param.checkbox>false</param.checkbox>
     <param.example />
-    <param.help.text />
+    <param.help.text>Syntax 
+	  -? 
+	 
+ Input Arguments 
+	 -?  print help on how to use the application 
+	 input arguments</param.help.text>
     <unset>
       <param.email />
       <param.description />
@@ -67,7 +72,6 @@
       <param.native.matlab />
       <param.checkbox />
       <param.example />
-      <param.help.text />
     </unset>
     <fileset.main>
       <file>${PROJECT_ROOT}\DataExport.mlapp</file>
@@ -81,35 +85,25 @@
       <file>${PROJECT_ROOT}\noun_refresh_cc.png</file>
     </fileset.depfun>
     <build-deliverables>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="DataExport.exe" optional="false">C:\Users\Alex\NeuroAnalysis\DataExport\DataExport\for_testing\DataExport.exe</file>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\Alex\NeuroAnalysis\DataExport\DataExport\for_testing\readme.txt</file>
-      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\Alex\NeuroAnalysis\DataExport\DataExport\for_testing\splash.png</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="splash.png" optional="false">C:\Users\anupam\NeuroAnalysis\DataExport\DataExport\for_testing\splash.png</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="readme.txt" optional="true">C:\Users\anupam\NeuroAnalysis\DataExport\DataExport\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\DataExport\for_testing" name="DataExport.exe" optional="false">C:\Users\anupam\NeuroAnalysis\DataExport\DataExport\for_testing\DataExport.exe</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2018a</root>
+      <root>C:\Program Files\Polyspace\R2019a</root>
       <toolboxes>
-        <toolbox name="fixedpoint" />
         <toolbox name="matlabcoder" />
-        <toolbox name="matlabhdlcoder" />
         <toolbox name="embeddedcoder" />
         <toolbox name="gpucoder" />
-        <toolbox name="polyspacebugfinder" />
+        <toolbox name="fixedpoint" />
+        <toolbox name="matlabhdlcoder" />
+        <toolbox name="neuralnetwork" />
       </toolboxes>
-      <toolbox>
-        <fixedpoint>
-          <enabled>true</enabled>
-        </fixedpoint>
-      </toolbox>
       <toolbox>
         <matlabcoder>
           <enabled>true</enabled>
         </matlabcoder>
-      </toolbox>
-      <toolbox>
-        <matlabhdlcoder>
-          <enabled>true</enabled>
-        </matlabhdlcoder>
       </toolbox>
       <toolbox>
         <embeddedcoder>
@@ -122,9 +116,19 @@
         </gpucoder>
       </toolbox>
       <toolbox>
-        <polyspacebugfinder>
+        <fixedpoint>
           <enabled>true</enabled>
-        </polyspacebugfinder>
+        </fixedpoint>
+      </toolbox>
+      <toolbox>
+        <matlabhdlcoder>
+          <enabled>true</enabled>
+        </matlabhdlcoder>
+      </toolbox>
+      <toolbox>
+        <neuralnetwork>
+          <enabled>true</enabled>
+        </neuralnetwork>
       </toolbox>
     </matlab>
     <platform>

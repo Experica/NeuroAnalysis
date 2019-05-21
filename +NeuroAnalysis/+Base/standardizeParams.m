@@ -43,7 +43,7 @@ end
 
 function [v] = standardizeType(v, type)
 % STANDARDIZETYPE convert to type if possible
-    
+
 if iscell(v)
     v = cellfun(@(x)standardizeType(x,type), v, 'UniformOutput', false);
 end
@@ -87,7 +87,7 @@ switch type
                     v = [1, 1, 1, 1];
             end
         end
-            
+        
     case 'bool'
         if isnumeric(v) && length(v) == 1
             v = logical(v);

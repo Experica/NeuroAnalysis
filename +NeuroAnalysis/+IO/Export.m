@@ -1,4 +1,4 @@
-function [ result ] = Export(datafile, exportdir,sourceformat,isparallel,callback,varargin )
+function [ result ] = Export(datafile, exportdir,sourceformat,isparallel,ismergeexport,callback,varargin )
 %EXPORT Export prepared dataset in Matlab MAT format file
 %   Detailed explanation goes here
 
@@ -7,7 +7,7 @@ global batchexportcallback % does not work in parallel for loop
 if isa(datafile,'cell')
     batchexportcallback=cell(1,2);
     funlist=repelem({'NeuroAnalysis.IO.Export'},length(datafile));
-    vararginlist = arrayfun(@(i)[i,{exportdir,sourceformat,isparallel,callback},varargin],datafile,'UniformOutput',false);
+    vararginlist = arrayfun(@(i)[i,{exportdir,sourceformat,isparallel,ismergeexport,callback},varargin],datafile,'UniformOutput',false);
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     
     callbackfun = batchexportcallback{1};
@@ -46,7 +46,15 @@ end
 %% Save dataset
 disp(['Exporting Dataset:    ',exportpath,'    ...']);
 if ~strcmp(sourceformat,'Unknown')
-    save(exportpath,'-struct','dataset','-v7.3');
+    if ismergeexport && exist(exportpath,'file')
+        olddataset = matfile(exportpath,'Writable',true);
+        fn = fieldnames(dataset);
+        for i=1:length(fn)
+            olddataset.(fn{i}) = dataset.(fn{i});
+        end
+    else
+        save(exportpath,'-struct','dataset','-v7.3');
+    end
 else
     copyfile(datafile,exportpath);
 end
