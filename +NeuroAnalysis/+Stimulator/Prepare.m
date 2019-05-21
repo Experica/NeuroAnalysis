@@ -168,7 +168,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         odt([oneframepulseindex,oneframepulseindex+1])=[];
                         ex.CondTest.CondOn_nidq = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
                         ex.CondDur = ex.CondDur*pd/ex.nidq.fs;
-                        ex.CondTest.CondOff_nidq= [ex.CondTestCond.CondOn_nidq(2:end),ex.CondTestCond.CondOn_nidq(end)+ex.CondDur];
+                        ex.CondTest.CondOff_nidq= [ex.CondTest.CondOn_nidq(2:end),ex.CondTest.CondOn_nidq(end)+ex.CondDur];
                     else
                         if ex.nCondTest == length(ex.nidq.digital(2).time)/4
                             ex.CondTest.CondOn_nidq=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
