@@ -161,38 +161,37 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 
                 if ex.nCondTest == length(ex.nidq.digital(1).time)/2
                     if strcmp(ex.ID,'FG') && ex.PreICI==0 && ex.SufICI==0
-                        ex.CondTest.TrialOn_nidq = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreITI;
-                        ex.CondTest.TrialOff_nidq= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufITI;
+                        ex.CondTest.TrialOn = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreITI;
+                        ex.CondTest.TrialOff= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufITI;
                         odt=ex.nidq.digital(2).time;
                         oneframepulseindex=find(diff(odt)<pd*1.5);
                         odt([oneframepulseindex,oneframepulseindex+1])=[];
-                        ex.CondTest.CondOn_nidq = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
+                        ex.CondTest.CondOn = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
                         ex.CondDur = ex.CondDur*pd/ex.nidq.fs;
-                        ex.CondTest.CondOff_nidq= [ex.CondTest.CondOn_nidq(2:end),ex.CondTest.CondOn_nidq(end)+ex.CondDur];
+                        ex.CondTest.CondOff= [ex.CondTest.CondOn(2:end),ex.CondTest.CondOn(end)+ex.CondDur];
                     else
-                        if ex.nCondTest == length(ex.nidq.digital(2).time)/4
-                            ex.CondTest.CondOn_nidq=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
-                            ex.CondTest.CondOff_nidq=sample2time(ex.nidq.digital(2).time(3:4:end),ex.nidq.fs,dataset.secondperunit);
-                        else
-                            ex.CondTest.CondOn_nidq = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
-                            ex.CondTest.CondOff_nidq= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufICI;
+                        if ex.nCondTest == length(ex.nidq.digital(2).time)/4 % photodiode
+                            ex.CondTest.CondOn=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
+                            ex.CondTest.CondOff=sample2time(ex.nidq.digital(2).time(3:4:end),ex.nidq.fs,dataset.secondperunit);
+                        else % digital
+                            ex.CondTest.CondOn = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
+                            ex.CondTest.CondOff= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufICI;
                         end
                     end
                 end
             end
         end
         
-        % if isfield(dataset,'lf') && ~isempty(dataset.lf.meta.fileName)
-        %     nsample=dataset.lf.meta.nFileSamp;
-        %     fs = dataset.lf.meta.imSampRate;
-        %     chns = dataset.lf.meta.snsApLfSy;
-        %     chn = dataset.lf.meta.nSavedChans;
-        %     if chns(3)>0
-        %         binmap = memmapfile(dataset.lf.meta.fileName,'Format',{'uint16',[chn,nsample],'lf'});
-        %         ex.lf.digital=parsedigital(binmap.Data.lf(chn,:),nsample,16);
-        %         ex.lf.fs=fs;
-        %     end
-        % end
+        if isfield(dataset,'lf') && ~isempty(dataset.lf.meta.fileName)
+            nsample=double(dataset.lf.meta.nFileSamp);
+            fs = dataset.lf.meta.fs;
+            chn = double(dataset.lf.meta.nSavedChans);
+            if dataset.lf.meta.snsApLfSy(3)>0
+                binmap = memmapfile(dataset.lf.meta.fileName,'Format',{'uint16',[chn,nsample],'lf'});
+                ex.lf.digital=parsedigitalbitinanalog(binmap.Data.lf(chn,:),nsample,16);
+                ex.lf.fs=fs;
+            end
+        end
         
         % if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
         %     nsample=dataset.ap.meta.nFileSamp;
