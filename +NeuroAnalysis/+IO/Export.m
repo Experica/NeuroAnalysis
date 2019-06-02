@@ -29,7 +29,7 @@ end
 if ~strcmp(sourceformat,'Unknown')
     % Prepare dataset from file
     dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],...
-        [{datafile},varargin]);
+        [{datafile},[varargin,{'exportdir',exportdir}]]);
     if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
         return;
     end
@@ -73,7 +73,7 @@ if ~isempty(callbackfun) && ~strcmp(sourceformat,'Unknown')
 end
 %% Prepare Metadata
 result.meta =[];
-if ~strcmp(sourceformat,'Unknown')
+if ~any(strcmp(sourceformat,{'Unknown','Phy'}))
     meta = NeuroAnalysis.Base.EvalFun(...
         ['NeuroAnalysis.',sourceformat,'.PrepareMetadata'], ...
         {dataset,callbackresult});

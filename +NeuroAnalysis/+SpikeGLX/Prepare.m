@@ -32,10 +32,12 @@ p = inputParser;
 addRequired(p,'filepath');
 addParameter(p,'SpikeSorting','None')
 addParameter(p,'IsConcat',0)
+addParameter(p,'exportdir','')
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 spikesorting = p.Results.SpikeSorting;
 issortconcat = p.Results.IsConcat;
+exportdir = p.Results.exportdir;
 global batchexportcallback
 %% Prepare all data files
 dataset = [];
@@ -88,6 +90,9 @@ if ~isempty(dataset)
     dataset.source = filename;
     dataset.secondperunit = secondperunit;
     dataset.sourceformat = 'SpikeGLX';
+    if ~isempty(exportdir)
+        dataset.filepath = fullfile(exportdir,[filename,'.mat']);
+    end
 end
 %% Prepare SpikeGLX data
 if ~isempty(dataset)
