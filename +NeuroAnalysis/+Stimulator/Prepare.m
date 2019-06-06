@@ -9,8 +9,20 @@ addOptional(p,'dataset',struct([]));
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 dataset = p.Results.dataset;
-%% check file
+%% check analyzer and log file
 stimulatordataset = struct([]);
+islogfile=false;
+[filedir,filename,ext] = fileparts(filepath);
+fns = strsplit(filename,'_');
+fnu = fns{2};
+fns{2}=fnu(2:end);
+logfilepath = fullfile(filedir,['*_',strjoin(fns,'_'),'.mat']);
+d = dir(logfilepath);
+if ~isempty(d)
+    islogfile=true;
+    logfilepath = fullfile(d(1).folder,d(1).name);
+end
+
 if ~exist(filepath, 'file')
     error(['Analyzer file: ',filepath,' not found.']);
 end
@@ -23,6 +35,11 @@ ex.raw = ex.raw.Analyzer;
 ex.source = filepath;
 ex.sourceformat = 'Stimulator';
 disp(['Reading Stimulator File:    ',filepath,'    Done.']);
+if islogfile
+    disp(['Reading Stimulator Log File:    ',logfilepath,'    ...']);
+    ex.raw.log = load(logfilepath,'-mat');
+    disp(['Reading Stimulator Log File:    ',logfilepath,'    Done.']);
+end
 %% Prepare data
 disp(['Preparing Stimulator File:    ',filepath,'    ...']);
 if isempty(ex.raw)
@@ -42,7 +59,7 @@ stimulatordataset.date = d.datenum;
 disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
 %%
     function [ ex ] = parseex( ex )
-        % Parse Stimulator Analyzer
+        %% Parse Stimulator Analyzer
         
         m = ex.raw.M;
         p = ex.raw.P;
@@ -99,6 +116,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         ex.EnvParam.ScreenHalfHeight = m.screenYcm/2;
         deg = atand(ex.EnvParam.ScreenHalfHeight/ex.EnvParam.ScreenToEye);
         ex.EnvParam.ScreenDegrees = [deg*ex.EnvParam.ScreenAspect*2, deg*2];
+        ex.EnvParam.Size = [ex.EnvParam.x_size,ex.EnvParam.y_size];
         
         % Condition Tests
         ctc = struct;
@@ -129,6 +147,65 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         ex.nCondTest = length(cti);
         ex.CondTestCond=ctc;
         
+        %% Parse Stimulator Log
+        if isfield(ex.raw,'log')
+            log = ex.raw.log;
+            ex.EnvParam.DisplayRefreshRate = log.frate;
+            if strcmp(ex.ID,'FG')
+                ts = fieldnames(log);
+                ts=ts(cellfun(@(x)startsWith(x,'randlog'),ts));
+                tn = cellfun(@(x)str2double(x(10:end)),ts);
+                tn,ti = sort(tn);
+                ts=ts(ti);
+                
+                condidx=[];
+                ctc=[];
+                cond=[];
+                for t=1:length(ts)
+                    tp = log.(ts{t});
+                    if isempty(cond)
+                        for i =1:size(tp.domains.Cond,1)
+                            cond=[cond,parsehartley(tp.domains.Cond(i,:),ex.EnvParam.Size)];
+                        end
+                    end
+                    for c=1:length(tp.seqs.frameseq)
+                        ci = tp.seqs.frameseq(c);
+                        condidx=[condidx,ci];
+                        ctc=[ctc,cond(ci)];
+                    end
+                end
+                ex.CondTest.CondIndex=condidx;
+                ex.CondTestCond = ctc;
+            end
+        end
+        
+        %% Convert Grating Drifting Direction to Orientation
+        if strcmp(ex.ID,'PG')
+            if isfield(ex.CondTestCond,'Ori')
+                ex.CondTestCond.Ori = mod(ex.CondTestCond.Ori+270,360);
+            end
+        end
+        %%
+        function [c]=parsehartley(p,size)
+            oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
+            c.Ori = atan(ky/kx)+pi/2;
+            akxy = abs([kx,ky]);
+            if akxy(1) > akxy(2)
+                sf = akxy(1)/size(1);
+            else
+                sf = akxy(2)/size(2);
+            end
+            c.SpatialFreq = sf;
+            if ky>=0
+                q=0;
+            else
+                q=0.25;
+            end
+            if bwdom==-1
+                q=q+0.5;
+            end
+            c.SpatialPhase = q;
+        end
     end
 %%
     function [ex] = parseevent(ex)
@@ -169,6 +246,10 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         ex.CondTest.CondOn = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
                         ex.CondDur = ex.CondDur*pd/ex.nidq.fs;
                         ex.CondTest.CondOff= [ex.CondTest.CondOn(2:end),ex.CondTest.CondOn(end)+ex.CondDur];
+                        iidx = (ex.CondTest.CondOff-ex.CondTest.CondOn) > pd/ex.nidq.fs+ex.CondDur;
+                        if any(iidx)
+                            ex.CondTest.CondOff(iidx) = ex.CondTest.CondOn(iidx)+ex.CondDur;
+                        end
                     else
                         if ex.nCondTest == length(ex.nidq.digital(2).time)/4 % photodiode
                             ex.CondTest.CondOn=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
