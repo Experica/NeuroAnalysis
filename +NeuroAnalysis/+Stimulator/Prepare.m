@@ -144,9 +144,8 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         for i=1:length(factornames)
             ctc.(factornames{i})=ctc.(factornames{i})(si);
         end
-        ex.nCondTest = length(cti);
+        ex.nTrial = length(cti);
         ex.CondTestCond=ctc;
-        
         %% Parse Stimulator Log
         if isfield(ex.raw,'log')
             log = ex.raw.log;
@@ -155,7 +154,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ts = fieldnames(log);
                 ts=ts(cellfun(@(x)startsWith(x,'randlog'),ts));
                 tn = cellfun(@(x)str2double(x(10:end)),ts);
-                tn,ti = sort(tn);
+                [~,ti] = sort(tn);
                 ts=ts(ti);
                 
                 condidx=[];
@@ -175,7 +174,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                     end
                 end
                 ex.CondTest.CondIndex=condidx;
-                ex.CondTestCond = ctc;
+                ex.CondTestCond = NeuroAnalysis.Base.arraystruct2structarray(ctc);
             end
         end
         
@@ -188,7 +187,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         %%
         function [c]=parsehartley(p,size)
             oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
-            c.Ori = atan(ky/kx)+pi/2;
+            c.Ori = rad2deg(atan(ky/kx)+pi/2);
             akxy = abs([kx,ky]);
             if akxy(1) > akxy(2)
                 sf = akxy(1)/size(1);
@@ -198,6 +197,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
             c.SpatialFreq = sf;
             if ky>=0
                 q=0;
+                if kx<0
+                    q=0.25;
+                end
             else
                 q=0.25;
             end
@@ -236,22 +238,41 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ex.nidq.digital(2).time=di;
                 ex.nidq.digital(2).value=dv;
                 
-                if ex.nCondTest == length(ex.nidq.digital(1).time)/2
+                if ex.nTrial == length(ex.nidq.digital(1).time)/2
                     if strcmp(ex.ID,'FG') && ex.PreICI==0 && ex.SufICI==0
                         ex.CondTest.TrialOn = sample2time(ex.nidq.digital(1).time(1:2:end),ex.nidq.fs,dataset.secondperunit)+ex.PreITI;
                         ex.CondTest.TrialOff= sample2time(ex.nidq.digital(1).time(2:2:end),ex.nidq.fs,dataset.secondperunit)-ex.SufITI;
                         odt=ex.nidq.digital(2).time;
-                        oneframepulseindex=find(diff(odt)<pd*1.5);
-                        odt([oneframepulseindex,oneframepulseindex+1])=[];
-                        ex.CondTest.CondOn = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
-                        ex.CondDur = ex.CondDur*pd/ex.nidq.fs;
+                        
+                        % the first oneframepulse of trial will merge with the first condition flip if PreITI==0, so there
+                        % would be 2 flip instead of 4 flip of trial oneframepulse
+                        if ex.PreITI==0
+                            ncondintrial = (length(odt)-2*ex.nTrial)/ex.nTrial;
+                            condon=[];
+                            for i=1:ex.nTrial
+                                t = odt((1:ncondintrial)+(i-1)*(ncondintrial+2));
+                                t(1)=t(1)+pd;
+                                condon=[condon,t];
+                            end
+                            ex.CondTest.CondOn = sample2time(condon,ex.nidq.fs,dataset.secondperunit);
+                        else
+                            oneframepulseindex=find(diff(odt)<pd*1.3);
+                            odt([oneframepulseindex,oneframepulseindex+1])=[];
+                            ex.CondTest.CondOn = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
+                        end
+                        
+                        if isfield(ex.EnvParam,'DisplayRefreshRate')
+                            ex.CondDur = ex.CondDur/ex.EnvParam.DisplayRefreshRate;
+                        else
+                            ex.CondDur = ex.CondDur*pd/ex.nidq.fs;
+                        end
                         ex.CondTest.CondOff= [ex.CondTest.CondOn(2:end),ex.CondTest.CondOn(end)+ex.CondDur];
                         iidx = (ex.CondTest.CondOff-ex.CondTest.CondOn) > pd/ex.nidq.fs+ex.CondDur;
                         if any(iidx)
                             ex.CondTest.CondOff(iidx) = ex.CondTest.CondOn(iidx)+ex.CondDur;
                         end
                     else
-                        if ex.nCondTest == length(ex.nidq.digital(2).time)/4 % photodiode
+                        if ex.nTrial == length(ex.nidq.digital(2).time)/4 % photodiode
                             ex.CondTest.CondOn=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
                             ex.CondTest.CondOff=sample2time(ex.nidq.digital(2).time(3:4:end),ex.nidq.fs,dataset.secondperunit);
                         else % digital
