@@ -195,14 +195,16 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 sf = abs(kx)/size(1);
             elseif ky*ky > 0   % (90 180)
                 c.Ori = 180 - atand(ky/kx);
+                sf = abs(ky/(size(2)*sin(c.Ori-90)))
             elseif kx*ky < 0   % (0 90)
                 c.Ori = abs(atand(ky/kx));
+                sf = abs(kx/(size(1)*sin(c.Ori)))
             end
 
-            if 0 < c.Ori <= 45 || 135 <= c.Ori < 180
-                sf = sqrt(kx^2 + ky^2) / abs((size(1)/cos(c.Ori));
-            elseif 45 < c.Ori < 90 || 90 < c.Ori < 135
-                sf = sqrt(kx^2 + ky^2) / (size(2)/sin(c.Ori))
+            % if 0 < c.Ori <= 45 || 135 <= c.Ori < 180
+            %     sf = sqrt(kx^2 + ky^2) / abs((size(1)/cos(c.Ori));
+            % elseif 45 < c.Ori < 90 || 90 < c.Ori < 135
+            %     sf = sqrt(kx^2 + ky^2) / (size(2)/sin(c.Ori))
             c.SpatialFreq = sf;
 
             if ky>=0
