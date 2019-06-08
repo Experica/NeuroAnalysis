@@ -115,7 +115,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         ex.EnvParam.ScreenAspect = ex.EnvParam.ScreenResolution(1)/ex.EnvParam.ScreenResolution(2);
         ex.EnvParam.ScreenHalfHeight = m.screenYcm/2;
         deg = atand(ex.EnvParam.ScreenHalfHeight/ex.EnvParam.ScreenToEye);
-        ex.EnvParam.ScreenDegrees = [deg*ex.EnvParam.ScreenAspect*2, deg*2];
+        ex.EnvParam.ScreenSizeDegree = [deg*ex.EnvParam.ScreenAspect*2, deg*2];
         ex.EnvParam.Size = [ex.EnvParam.x_size,ex.EnvParam.y_size];
         
         % Condition Tests
@@ -173,7 +173,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         ctc=[ctc,cond(ci)];
                     end
                 end
-                ex.CondTest.CondIndex=condidx;
+                ex.CondTest.CondIndex=int64(condidx);
                 ex.CondTestCond = NeuroAnalysis.Base.arraystruct2structarray(ctc);
             end
         end
@@ -187,7 +187,13 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         %%
         function [c]=parsehartley(p,size)
             oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
-            c.Ori = rad2deg(atan(ky/kx)+pi/2);
+            if kx==0 && ky~=0
+                c.Ori=90;
+            elseif ky==0 && kx~=0
+                c.Ori=0;
+            else
+                c.Ori = atand(ky/kx)+90;
+            end
             akxy = abs([kx,ky]);
             if akxy(1) > akxy(2)
                 sf = akxy(1)/size(1);
@@ -197,7 +203,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
             c.SpatialFreq = sf;
             if ky>=0
                 q=0;
-                if kx<0
+                if kx<0 && ky==0
                     q=0.25;
                 end
             else
@@ -268,6 +274,10 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         end
                         ex.CondTest.CondOff= [ex.CondTest.CondOn(2:end),ex.CondTest.CondOn(end)+ex.CondDur];
                         iidx = (ex.CondTest.CondOff-ex.CondTest.CondOn) > pd/ex.nidq.fs+ex.CondDur;
+                        if any(iidx)
+                            ex.CondTest.CondOff(iidx) = ex.CondTest.CondOn(iidx)+ex.CondDur;
+                        end
+                        iidx = (ex.CondTest.CondOff-ex.CondTest.CondOn) < ex.CondDur-pd/ex.nidq.fs;
                         if any(iidx)
                             ex.CondTest.CondOff(iidx) = ex.CondTest.CondOn(iidx)+ex.CondDur;
                         end
