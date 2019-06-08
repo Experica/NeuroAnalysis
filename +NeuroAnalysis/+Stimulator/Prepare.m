@@ -187,20 +187,24 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         %%
         function [c]=parsehartley(p,size)
             oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
-            if kx==0 && ky~=0
-                c.Ori=90;
-            elseif ky==0 && kx~=0
+            if kx==0 && ky~=0   % 0
                 c.Ori=0;
-            else
-                c.Ori = atand(ky/kx)+90;
+                sf = abs(ky)/size(2);
+            elseif ky==0 && kx~=0   % 90
+                c.Ori=90;
+                sf = abs(kx)/size(1);
+            elseif ky*ky > 0   % (90 180)
+                c.Ori = 180 - atand(ky/kx);
+            elseif kx*ky < 0   % (0 90)
+                c.Ori = abs(atand(ky/kx));
             end
-            akxy = abs([kx,ky]);
-            if akxy(1) > akxy(2)
-                sf = akxy(1)/size(1);
-            else
-                sf = akxy(2)/size(2);
-            end
+
+            if 0 < c.Ori <= 45 || 135 <= c.Ori < 180
+                sf = sqrt(kx^2 + ky^2) / abs((size(1)/cos(c.Ori));
+            elseif 45 < c.Ori < 90 || 90 < c.Ori < 135
+                sf = sqrt(kx^2 + ky^2) / (size(2)/sin(c.Ori))
             c.SpatialFreq = sf;
+
             if ky>=0
                 q=0;
                 if kx<0 && ky==0
