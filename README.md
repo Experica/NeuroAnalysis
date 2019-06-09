@@ -12,6 +12,7 @@ Supported data format:
 * [Optical Imageing](https://opt-imaging.com/)
 * [Experica](https://experica.org/)
 * Stimulator
+* VisStim
 * [Phy](https://github.com/cortex-lab/phy)
 
 Spike Sorting can be incorporated in the process pipeline.
