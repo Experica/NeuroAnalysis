@@ -252,7 +252,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         
                         % the first oneframepulse of trial will merge with the first condition flip if PreITI==0, so there
                         % would be 2 flip instead of 4 flip of trial oneframepulse
-                        if ex.PreITI==0
+                        if ex.PreITI==0 && isfield(ex.raw,'log')
                             ncondintrial = (length(odt)-2*ex.nTrial)/ex.nTrial;
                             condon=[];
                             for i=1:ex.nTrial
