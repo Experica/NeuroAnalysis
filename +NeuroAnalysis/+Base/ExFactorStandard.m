@@ -7,7 +7,7 @@ classdef ExFactorStandard
         Ori = {'double', {'ori', 'orientation'}}
         Diameter = {'double', {'diameter', 'diam', 'aperture', 'apt'}}
         Size = {'xy', {'size'}}
-        Color = {'color', {'color'}}
+        Color = {'color', {'color','colormod'}}
         Visible = {'bool', {'visible', 'on'}}
         Position = {'xy', {'position', 'xyposition', 'location'}}
         Contrast = {'double', {'contrast', 'con'}}

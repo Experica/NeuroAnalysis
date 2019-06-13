@@ -68,10 +68,12 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         % Experimental parameters
         ex.Subject_ID = m.anim;
         ex.RecordSession = '';
-        ex.RecordSite = m.unit;
+        ex.RecordSite = ['u',m.unit];
         ex.Hemisphere = m.hemi;
+        ex.TestID = m.expt;
         ex.DisplayType= m.monitor;
         ex.ID = p.type;
+        ex.Name = ex.ID;
         
         if l.rand
             ex.CondSampling = 'UniformWithoutReplacement';
@@ -195,9 +197,11 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 c.Ori = 180 - atand(ky/kx);
             elseif kx*ky < 0   % (0 90)
                 c.Ori = abs(atand(ky/kx));
+            else
+                c.Ori=NaN;
             end
             c.SpatialFreq = sqrt((kx/size(1))^2 + (ky/size(2))^2);
-
+            
             if ky>=0
                 q=0;
                 if kx<0 && ky==0
@@ -250,6 +254,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         % the first oneframepulse of trial will merge with the first condition flip if PreITI==0, so there
                         % would be 2 flip instead of 4 flip of trial oneframepulse
                         if ex.PreITI==0 && isfield(ex.raw,'log')
+                            ex.ID = 'Hartley';
                             ncondintrial = (length(odt)-2*ex.nTrial)/ex.nTrial;
                             condon=[];
                             for i=1:ex.nTrial
@@ -259,6 +264,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                             end
                             ex.CondTest.CondOn = sample2time(condon,ex.nidq.fs,dataset.secondperunit);
                         else
+                            ex.ID = 'Flash';
                             oneframepulseindex=find(diff(odt)<pd*1.3);
                             odt([oneframepulseindex,oneframepulseindex+1])=[];
                             ex.CondTest.CondOn = sample2time(odt,ex.nidq.fs,dataset.secondperunit);
@@ -279,6 +285,11 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                             ex.CondTest.CondOff(iidx) = ex.CondTest.CondOn(iidx)+ex.CondDur;
                         end
                     else
+                        if isfield(ex.CondTestCond,'colormod')
+                            ex.ID = 'OriSFColor';
+                        else
+                            ex.ID = 'OriSF';
+                        end
                         if ex.nTrial == length(ex.nidq.digital(2).time)/4 % photodiode
                             ex.CondTest.CondOn=sample2time(ex.nidq.digital(2).time(1:4:end),ex.nidq.fs,dataset.secondperunit)+ex.PreICI;
                             ex.CondTest.CondOff=sample2time(ex.nidq.digital(2).time(3:4:end),ex.nidq.fs,dataset.secondperunit);
