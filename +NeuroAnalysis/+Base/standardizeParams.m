@@ -61,6 +61,18 @@ switch type
             end
         end
         
+    case 'int'
+        if ischar(v)
+            d = sscanf(v, '%li');
+            if length(d) == 1
+                v = d;
+            end
+        elseif isnumeric(v)
+            if length(v) == 1
+                v = int64(v);
+            end
+        end
+        
     case 'string'
         if ~ischar(v)
             v = char(string(v));
