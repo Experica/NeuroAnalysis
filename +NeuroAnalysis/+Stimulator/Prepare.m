@@ -194,9 +194,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
             elseif ky==0 && kx~=0   % 90
                 c.Ori=90;
             elseif kx*ky > 0   % (90 180)
-                c.Ori = 180 - atand(ky/kx);
+                c.Ori = 180 - rad2deg(atand(ky/kx));
             elseif kx*ky < 0   % (0 90)
-                c.Ori = abs(atand(ky/kx));
+                c.Ori = rad2deg(abs(atand(ky/kx));
             else
                 c.Ori=NaN;
             end
