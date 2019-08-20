@@ -80,7 +80,7 @@ ops.fbinary = dataset.ap.meta.fileName;
 
 % the probe channel map
 [thisdir,~,~] = fileparts(mfilename('fullpath'));
-ops.chanMap = fullfile(thisdir,'neuropixPhase3A_kilosortChanMap.mat');
+ops.chanMap = fullfile(thisdir,'neuropixPhase3A_kilosortChanMap_coords.mat');
 
 % sample rate
 ops.fs = dataset.ap.meta.fs;
