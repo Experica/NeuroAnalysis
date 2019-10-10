@@ -2,7 +2,7 @@ function [ dataset ] = KiloSort( dataset )
 %KILOSORT Summary of this function goes here
 %   Detailed explanation goes here
 
-%% Concat binary files in time order to get consistent sorting
+%% Concat binary files in time order to get consistent cluster id
 if iscell(dataset)
     datasets = cellfun(@load,dataset,'uniformoutput',0);
     binfiles = cellfun(@(x)x.ap.meta.fileName,datasets,'uniformoutput',0);
@@ -12,7 +12,8 @@ if iscell(dataset)
     [~,isort]=sort(binfiledate);
     binfiles=binfiles(isort);
     binfilensample = binfilensample(isort);
-    datasets=datasets(isort);
+    dataset = dataset(isort);
+    datasets = datasets(isort);
     % get concat file name
     if strcmp(datasets{1}.ex.sourceformat, 'Stimulator')
         binrootdir = fileparts(binfiles{1});
@@ -27,23 +28,31 @@ if iscell(dataset)
             [binrootdir,concatname{i},~] = fileparts(binfiles{i});
         end
     end
-    concatname=[strjoin(concatname,'__'),'.bin'];
-    if length(concatname)>240
-        concatname = concatname(1:240); % limit file/folder name length on NTFS
-    end
+    concatname=strjoin(concatname,'__');
     concatfilepath = fullfile(binrootdir,concatname);
+    if length(concatfilepath)>240
+        concatfilepath = concatfilepath(1:240); % limit path name length on NTFS
+    end
+    concatfilepath = [concatfilepath,'.bin'];
     % concat binary files
     if exist(concatfilepath,'file')
         disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
     else
         cfid=fopen(concatfilepath,'w');
-        chucksize=1000000; % 1MSample ~ 1GB for 500Chs
+        chucksample=1000000; % 1MSample ~ 1GB for 500Chs
         for i=1:length(binfiles)
             fprintf('Concat Binary File:    %s    ...\n',binfiles{i});
             fid=fopen(binfiles{i},'r');
-            for j=1:ceil(binfilensample(i)/chucksize)
-                chuckdata=fread(fid,[nch,chucksize],'*int16');
-                fwrite(cfid,chuckdata,'int16');
+            remainingsample = binfilensample(i);
+            while remainingsample>0
+                if remainingsample - chucksample >=0
+                    readsample = chucksample;
+                else
+                    readsample = remainingsample;
+                end
+                readdata = fread(fid,[nch,readsample],'*int16');
+                fwrite(cfid,readdata,'int16');
+                remainingsample = remainingsample - readsample;
             end
             fclose(fid);
         end
@@ -51,27 +60,28 @@ if iscell(dataset)
         disp('Concat Binary Files        Done.');
     end
     % concat binary file kilosort
-    dataset=struct;
-    dataset.secondperunit = datasets{1}.secondperunit;
-    dataset.ap.meta.fileName=concatfilepath;
-    dataset.ap.meta.fs = datasets{1}.ap.meta.fs;
-    dataset.ap.meta.nSavedChans= nch;
-    dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset);
+    cdataset.secondperunit = datasets{1}.secondperunit;
+    cdataset.filepath = dataset;
+    cdataset.ap.meta.fileName=concatfilepath;
+    cdataset.ap.meta.fs = datasets{1}.ap.meta.fs;
+    cdataset.ap.meta.nSavedChans = nch;
+    cdataset.binfilerange = NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),cdataset.ap.meta.fs,cdataset.secondperunit);
+    cdataset = NeuroAnalysis.SpikeGLX.KiloSort(cdataset);
     % split sorting result into each original dataset
-    disp('Split Sorting Result Into Dataset Files        ...');
-    spike = dataset.spike_kilosort;
-    binfilerange=NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),spike.fs,dataset.secondperunit);
+    disp('Split Sorting Result Into Dataset        ...');
+    spike = cdataset.spike_kilosort;
     for i=1:length(datasets)
         odataset = datasets{i};
-        odataset.spike_kilosort = splitspike(spike,binfilerange(i:i+1));
+        odataset.spike_kilosort = NeuroAnalysis.Base.splitspike(spike,cdataset.binfilerange(i:i+1));
         save(odataset.filepath,'-struct','odataset','-v7.3');
     end
-    disp('Split Sorting Result Into Dataset Files        Done.');
+    disp('Split Sorting Result Into Dataset        Done.');
     return;
 end
 
-disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    ...']);
 %% KiloSort2 ops
+disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    ...']);
+
 % the binary file
 ops.fbinary = dataset.ap.meta.fileName;
 
@@ -80,16 +90,16 @@ ops.fbinary = dataset.ap.meta.fileName;
 
 % the probe channel map
 [thisdir,~,~] = fileparts(mfilename('fullpath'));
-ops.chanMap = fullfile(thisdir,'neuropixPhase3A_kilosortChanMap_coords.mat');
+ops.chanMap = fullfile(thisdir,'NeuropixelPhase3A_KilosortChannelMap.mat');
 
 % sample rate
 ops.fs = dataset.ap.meta.fs;
 
-% frequency for high pass filtering (150)
-ops.fshigh = 150;
+% frequency for high pass filtering
+ops.fshigh = 300;
 
 % minimum firing rate on a "good" channel (0 to skip)
-ops.minfr_goodchannels = 0.1;
+ops.minfr_goodchannels = 0.01;
 
 % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
 ops.Th = [10 4];
@@ -101,7 +111,7 @@ ops.lam = 10;
 ops.AUCsplit = 0.95;
 
 % minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
-ops.minFR = 1/50;
+ops.minFR = 1/100;
 
 % number of samples to average over (annealed from first to second value)
 ops.momentum = [20 400];
@@ -123,22 +133,25 @@ ops.NchanTOT = double(dataset.ap.meta.nSavedChans);
 
 % common average referencing by median
 ops.CAR = 1;
+
 %% danger, changing these settings can lead to fatal errors
+
 % options for determining PCs
-ops.spkTh           = -6;      % spike threshold in standard deviations (-6)
-ops.reorder         = 1;       % whether to reorder batches for drift correction.
+ops.spkTh           = -6;  % spike threshold in standard deviations (-6)
+ops.reorder         = 1;   % whether to reorder batches for drift correction.
 ops.nskip           = 25;  % how many batches to skip for determining spike PCs
 
 ops.GPU                 = 1; % has to be 1, no CPU version yet, sorry
 ops.nfilt_factor        = 4; % max number of clusters per good channel (even temporary ones)
-ops.ntbuff              = 64;    % samples of symmetrical buffer for whitening and spike detection
-ops.NT                  = 64*1024+ ops.ntbuff; % must be multiple of 32 + ntbuff. This is the batch size (try decreasing if out of memory).
+ops.ntbuff              = 64; % samples of symmetrical buffer for whitening and spike detection
+ops.NT                  = 64*1024 + ops.ntbuff; % must be multiple of 32 + ntbuff. This is the batch size (try decreasing if out of memory).
 ops.whiteningRange      = 32; % number of channels to use for whitening each channel
 ops.nSkipCov            = 25; % compute whitening matrix from every N-th batch
-ops.scaleproc           = 200;   % int16 scaling of whitened data
+ops.scaleproc           = 200; % int16 scaling of whitened data
 ops.nPCs                = 3; % how many PCs to project the spikes into
 ops.useRAM              = 0; % not yet available
 %% this block runs all the steps of the algorithm
+
 % preprocess data to create temp_wh.dat
 rez = preprocessDataSub(ops);
 
@@ -160,25 +173,29 @@ rez = splitAllClusters(rez, 0);
 % decide on cutoff
 rez = set_cutoff(rez);
 
-fprintf('found %d good units \n', sum(rez.good>0))
+fprintf('found %d / %d good units \n', sum(rez.good>0),length(rez.good))
+
 %% Get sorted spikes
-spike = extractrez(rez);
+spike = extractrez(rez,dataset.secondperunit);
 if ~isempty(spike)
     dataset.spike_kilosort=spike;
 end
 
 phydir = fullfile(binrootdir,[binname,'_Phy']);
+if exist(phydir,'dir')
+    rmdir(phydir,'s');
+end
 if ~exist(phydir,'dir')
     mkdir(phydir);
 end
-rez2phy(rez,phydir,dataset.filepath);
+rez2phy(rez,phydir,dataset);
 
 if exist(ops.fproc, 'file')
     delete(ops.fproc);
 end
 disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
 %%
-    function rez2phy(rez, savePath,datasetpath)
+    function rez2phy(rez, savePath,dataset)
         % pull out results from kilosort's rez to either return to workspace or to
         % save in the appropriate format for the phy GUI to run on. If you provide
         % a savePath it should be a folder, and you will need to have npy-matlab
@@ -344,8 +361,18 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
                 
                 [~, fname, ext] = fileparts(rez.ops.fbinary);
                 
+                % save dataset path so that phy sorting result could be loaded back into dataset
+                if iscell(dataset.filepath)
+                    datasetpath = strjoin(dataset.filepath,', ');
+                else
+                    datasetpath = dataset.filepath;
+                end
                 fprintf(fid,['dataset_path = ''',replace(datasetpath,'\','\\'),'''\n']);
-                fprintf(fid,['dat_path = ''','../',fname ext '''\n']);
+                fprintf(fid,'secondperunit = %.32f\n',dataset.secondperunit);
+                if isfield(dataset,'binfilerange')
+                    writeNPY(dataset.binfilerange, fullfile(savePath, 'binfilerange.npy'));
+                end
+                fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder usually in the sam folder of binaries
                 fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
                 fprintf(fid,'dtype = ''int16''\n');
                 fprintf(fid,'offset = 0\n');
@@ -360,12 +387,12 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
         end
     end
 %%
-    function [spike]=extractrez(rez)
+    function [spike]=extractrez(rez,secondperunit)
         spike.fs = rez.ops.fs;
-        spike.time = NeuroAnalysis.Base.sample2time(rez.st3(:,1),spike.fs,dataset.secondperunit);
+        spike.time = NeuroAnalysis.Base.sample2time(rez.st3(:,1),spike.fs,secondperunit);
         spike.template = int64(rez.st3(:,2));
         spike.cluster = spike.template;
-        spike.clusterid = unique(spike.cluster);
+        spike.clusterid = unique(spike.cluster); % already sorted, match nTemplates
         spike.amplitude = rez.st3(:,3);
         
         rez.W = gather(single(rez.Wphy));
@@ -380,24 +407,15 @@ disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
         for iNN = 1:size(templates,3)
             templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
         end
-        spike.templates = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
+        spike.clustertemplates = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
         spike.chanmap = int64(rez.ops.chanMap(:));
         spike.channelposition = [rez.xcoords(:) rez.ycoords(:)];
         spike.whiteningmatrix = rez.Wrot/rez.ops.scaleproc;
         spike.whiteningmatrixinv = spike.whiteningmatrix^-1;
-        spike.good = rez.good;
-        spike.contamrate = rez.est_contam_rate;
+        spike.clustergood = rez.good;
         
         rez.ops.igood = gather(rez.ops.igood);
         spike.ops = rez.ops;
         spike.ischecked = false;
-    end
-%%
-    function [sspike]=splitspike(spike,range)
-        sspike=spike;
-        si = find(spike.time>= range(1) & spike.time< range(2));
-        sspike.time=spike.time(si)-range(1);
-        sspike.template=spike.template(si);
-        sspike.amplitude=spike.amplitude(si);
     end
 end

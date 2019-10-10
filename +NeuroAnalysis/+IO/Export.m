@@ -30,8 +30,16 @@ if ~strcmp(sourceformat,'Unknown')
     % Prepare dataset from file
     dataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.',sourceformat,'.Prepare'],...
         [{datafile},[varargin,{'exportdir',exportdir}]]);
-    if isempty(dataset) || (isfield(dataset,'status') && ~dataset.status)
+    if isempty(dataset)
         return;
+    else
+        if isfield(dataset,'status') && ~dataset.status
+            return;
+        end
+        if isfield(dataset,'earlyfinish') && dataset.earlyfinish
+            result.status = true;
+            return;
+        end
     end
     % Get the export path
     if ~isfield(dataset, 'filepath') || isempty(dataset.filepath)

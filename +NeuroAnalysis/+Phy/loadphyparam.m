@@ -19,9 +19,8 @@ for i=1:numel(csName)
     vcName1 = csName{i};
     if vcName1(1) == '~', vcName1(1) = []; end
     try
-        if csValue{i}(1)==''''; % if first character of the value is a single quote
-            % then it's a string and we can evaluate without adding a
-            % single quote
+        if csValue{i}(1)=='''' % if first character of the value is a single quote
+            % then it's a string and we can evaluate without adding a single quote
             eval(sprintf('%s = %s;', vcName1, csValue{i}));
         else
             eval(sprintf('%s = ''%s'';', vcName1, csValue{i}));
@@ -47,4 +46,3 @@ for f = 1:length(fnames)
 end
 
 end
-

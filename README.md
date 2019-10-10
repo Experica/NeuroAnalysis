@@ -4,7 +4,7 @@
 
 ![DataExport](./DataExport/DataExportCapture.PNG)
 
-DataExport is the GUI for converting raw data from different formats of one complete experiment to one MATLAB mat file dataset. 
+DataExport is the GUI for converting raw data in different formats of one complete experiment to one MATLAB mat file dataset. 
 
 Supported data format: 
 * [Ripple](https://rippleneuro.com/)

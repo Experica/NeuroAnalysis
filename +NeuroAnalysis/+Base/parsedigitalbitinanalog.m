@@ -25,7 +25,7 @@ for i=1:nbitpersample
         v=vs{i};
         dchs(k).channel=i;
         dchs(k).time=t;
-        dchs(k).value=v;
+        dchs(k).data=v;
         k=k+1;
     end
 end

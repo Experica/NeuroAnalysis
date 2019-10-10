@@ -21,9 +21,15 @@ function [ dataset ] = Prepare( filepath,varargin )
             if r
                 v=t;
             end
-            meta = setfield(meta, tag, v);
+            meta.(tag) = v;
         end
-        meta.nFileSamp = int64(meta.fileSizeBytes/meta.nSavedChans/2);
+        t = meta.fileSizeBytes/meta.nSavedChans;
+        if mod(t,2) ~= 0
+            warning('Binary file does not have same number of samples for all channels. Use the maximum same length for all channels.');
+            meta.nFileSamp = int64(floor(t/2));
+        else
+            meta.nFileSamp = int64(t/2);
+        end
         meta.nSavedChans = int64(meta.nSavedChans);
         meta.fileDate = datenum(meta.fileCreateTime,'yyyy-mm-ddTHH:MM:SS');
     end
@@ -158,6 +164,13 @@ if ~isempty(dataset)
         end
     end
     if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
+        nsample=double(dataset.ap.meta.nFileSamp);
+        chn = double(dataset.ap.meta.nSavedChans);
+        if dataset.ap.meta.snsApLfSy(3)>0
+            binmap = memmapfile(dataset.ap.meta.fileName,'Format',{'uint16',[chn,nsample],'ap'});
+            dataset.ap.digital=NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.ap(chn,:),nsample,16);
+        end
+        
         if iscell(batchexportcallback) && issortconcat && ~strcmp(spikesorting,'None')
             batchexportcallback{1}=['NeuroAnalysis.SpikeGLX.',spikesorting];
         else
