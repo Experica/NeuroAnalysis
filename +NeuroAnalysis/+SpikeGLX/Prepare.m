@@ -128,8 +128,8 @@ if ~isempty(dataset)
                 meta.roch = int64(cell2mat(C(1)));
                 meta.robank = int64(cell2mat(C(2)));
                 meta.rorefch = int64(cell2mat(C(3)));
-                meta.apgain = cell2mat(C(4));
-                meta.lfgain = cell2mat(C(5));
+                meta.roapgain = cell2mat(C(4));
+                meta.rolfgain = cell2mat(C(5));
                 % 1-based index of reference IDs for probe option
                 if meta.imProbeOpt<4
                     meta.refch = int64([36, 75, 112, 151, 188, 227, 264, 303, 340, 379]+1);
@@ -142,9 +142,9 @@ if ~isempty(dataset)
                     meta.shank = int64(cell2mat(C(1))+1);
                     meta.col = int64(cell2mat(C(2))+1);
                     meta.row = int64(cell2mat(C(3))+1);
-                    meta.nshank = max(meta.shank);
-                    meta.ncol= max(meta.col);
-                    meta.nrow = max(meta.row);
+                    meta.nshank = length(unique(meta.shank));
+                    meta.ncol= length(unique(meta.col));
+                    meta.nrow = length(unique(meta.row));
                 end
             else
                 meta.fs = meta.niSampRate;
@@ -166,7 +166,7 @@ if ~isempty(dataset)
     if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
         nsample=double(dataset.ap.meta.nFileSamp);
         chn = double(dataset.ap.meta.nSavedChans);
-        if dataset.ap.meta.snsApLfSy(3)>0
+        if dataset.ap.meta.snsApLfSy(3)<=0%>0
             binmap = memmapfile(dataset.ap.meta.fileName,'Format',{'uint16',[chn,nsample],'ap'});
             dataset.ap.digital=NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.ap(chn,:),nsample,16);
         end
