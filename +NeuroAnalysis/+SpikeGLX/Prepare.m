@@ -121,6 +121,7 @@ if ~isempty(dataset)
                 % factor for converting 16-bit file data to voltage
                 meta.fi2v = meta.imAiRangeMax / 512;
                 meta.snsApLfSy = int64(meta.snsApLfSy);
+                meta.acqApLfSy = int64(meta.acqApLfSy);
                 
                 % imec readout table
                 C = textscan(meta.imroTbl, '(%d %d %d %d %d', ...
@@ -136,15 +137,18 @@ if ~isempty(dataset)
                 else
                     meta.refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
                 end
+                % probe channel spacing[x,y,z] in um
+                meta.probespacing = [16,20,0];
                 if isfield(meta,'snsShankMap')
+                    header = int64(str2num(regexp(meta.snsShankMap,'([1-9,]*)','match','once')));
+                    meta.nshank = header(1);
+                    meta.ncol= header(2);
+                    meta.nrow = header(3);
                     C = textscan(meta.snsShankMap, '(%d:%d:%d:%*s', ...
                         'EndOfLine', ')', 'HeaderLines', 1 );
                     meta.shank = int64(cell2mat(C(1))+1);
                     meta.col = int64(cell2mat(C(2))+1);
                     meta.row = int64(cell2mat(C(3))+1);
-                    meta.nshank = length(unique(meta.shank));
-                    meta.ncol= length(unique(meta.col));
-                    meta.nrow = length(unique(meta.row));
                 end
             else
                 meta.fs = meta.niSampRate;
@@ -153,11 +157,11 @@ if ~isempty(dataset)
             end
             
             % Return original channel IDs, because the ith channel in the file isn't necessarily
-            % the ith acquired channel, so it could be used to index ith stored to original.
+            % the ith acquired channel, so it could be used to index ith saved to original.
             if ischar(meta.snsSaveChanSubset) && strcmp(meta.snsSaveChanSubset, 'all')
-                meta.chans = int64(1:meta.nSavedChans);
+                meta.savedchans = int64(1:meta.nSavedChans);
             else
-                meta.chans = int64(meta.snsSaveChanSubset+1);
+                meta.savedchans = int64(meta.snsSaveChanSubset+1);
             end
             
             dataset.(ds).meta = meta;
