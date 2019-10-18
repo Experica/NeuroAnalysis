@@ -146,9 +146,9 @@ if ~isempty(dataset)
                     meta.nrow = header(3);
                     C = textscan(meta.snsShankMap, '(%d:%d:%d:%*s', ...
                         'EndOfLine', ')', 'HeaderLines', 1 );
-                    meta.shank = int64(cell2mat(C(1))+1);
-                    meta.col = int64(cell2mat(C(2))+1);
-                    meta.row = int64(cell2mat(C(3))+1);
+                    meta.savedshanks = int64(cell2mat(C(1))+1);
+                    meta.savedcols = int64(cell2mat(C(2))+1);
+                    meta.savedrows = int64(cell2mat(C(3))+1);
                 end
             else
                 meta.fs = meta.niSampRate;
