@@ -175,6 +175,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         ctc=[ctc,cond(ci)];
                     end
                 end
+                ex.Cond = NeuroAnalysis.Base.arraystruct2structarray(cond);
                 ex.CondTest.CondIndex=int64(condidx);
                 ex.CondTestCond = NeuroAnalysis.Base.arraystruct2structarray(ctc);
             end
@@ -186,7 +187,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ex.CondTestCond.Ori = mod(ex.CondTestCond.Ori+270,360);
             end
         end
-        %%
+        %% Get Ori, SpatialFreq and SpatialPhase from Hartley Space parameters(horizontal ori = 0)
         function [c]=parsehartley(p,size)
             oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
             if kx==0 && ky~=0   % 0

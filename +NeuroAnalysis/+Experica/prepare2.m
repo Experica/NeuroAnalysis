@@ -39,9 +39,12 @@ if isfield(ex.CondTest,'BlockRepeat')
     ex.CondTest.BlockRepeat(cellfun(@isempty,ex.CondTest.BlockRepeat)) = {-1};
     ex.CondTest.BlockRepeat = cellfun(@(x)int64(x), ex.CondTest.BlockRepeat);
 end
-%% Parse Sync digital data
-ex.t0=0;
+%% Init default timing params
+ex.t0=54;
 displaylatency = ex.Config.Display.(ex.Display_ID).Latency;
+timerdriftspeed = ex.TimerDriftSpeed;
+displayfallriselagdiff = ex.Config.Display.(ex.Display_ID).FallRiseLagDiff;
+%% Parse Sync digital data
 if ~isempty(dataset)
     if ~isfield(dataset,'digital')
         if isfield(dataset,'ap') && isfield(dataset.ap,'digital')
@@ -50,20 +53,44 @@ if ~isempty(dataset)
         elseif isfield(dataset,'lf') && isfield(dataset.lf,'digital')
             digital = dataset.lf.digital;
             fs = dataset.lf.meta.fs;
+        else
+            digital=[];
         end
         
-        for i=1:length(digital)
-            digital(i).time = sample2time(digital(i).time,fs,dataset.secondperunit);
+        if ~isempty(digital)
+            for i=1:length(digital)
+                digital(i).time = sample2time(digital(i).time,fs,dataset.secondperunit);
+            end
+            dataset.digital = digital;
         end
-        dataset.digital = digital;
     end
     
-    startsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.StartSyncCh+1,dataset.digital));
-    if ~isempty(startsyncchidx)
-        ex.t0=dataset.digital(startsyncchidx).time;
+    if isfield(dataset,'digital')
+        startsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.StartSyncCh+1,dataset.digital));
+        if ~isempty(startsyncchidx)
+            ex.t0=dataset.digital(startsyncchidx).time;
+        end
     end
 end
-%% Parse CondTest Sync Event Timing
+%%
+    function [cdt,cdv] = cleannoisedigital(dt,dv,minlowdur,minhighdur)
+        cdt=dt(1);cdv=dv(1);
+        hi=find(dv==1);
+        for i=2:length(hi)
+            shi = hi(i);
+            sli = hi(i)-1;
+            slt = dt(sli);
+            sht = dt(shi);
+            if ((sht-slt) > minlowdur) && ((slt-cdt(end)) > minhighdur)
+                cdt = [cdt,slt,sht];
+                cdv = [cdv,dv(sli),dv(shi)];
+            end
+        end
+        if dv(end)==0
+            cdt=[cdt,dt(end)];
+            cdv=[cdv,0];
+        end
+    end
     function searchrecover(from,to,data,latency,sr)
         names = fieldnames(ex.CondTest);
         fromnames = names(cellfun(@(x)startsWith(x,from),names));
@@ -136,8 +163,7 @@ end
             ts=[ts,t];
         end
     end
-
-% get 'Command', 'Sync' and 'Measure' versions of SyncEvent Timing, then Combine them to get the final best timing
+%% Parse CondTest Sync Event Timing, get 'Command', 'Sync' and 'Measure' versions of SyncEvent Timing, then Combine them to get the final best timing
 if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     % Parse SyncEvent 'Command' Timing
     ses=[];sectidx=[];
@@ -146,7 +172,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         ctses = ex.CondTest.SyncEvent{i};
         ses=[ses,ctses];
         sectidx=[sectidx,repelem(i,length(ctses))];
-        usets = uniqueeventtime(arrayfun(@(x)toreftime(x,ex.t0,ex.TimerDriftSpeed), findeventtime(ctes,ctses)),ctses);
+        usets = uniqueeventtime(arrayfun(@(x)toreftime(x,ex.t0,timerdriftspeed), findeventtime(ctes,ctses)),ctses);
         uses = fieldnames(usets);
         for j=1:length(uses)
             e = uses{j};
@@ -169,10 +195,21 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             if iseventsync
                 eventsynctime = dataset.digital(eventsyncchidx).time;
                 eventsyncdata = dataset.digital(eventsyncchidx).data;
+                if length(ses)~=length(eventsyncdata)
+                    if ex.PreICI ==0 && ex.SufICI==0
+                        minlow = max(10,ex.CondDur-50);
+                        minhigh = minlow;
+                    else
+                        minlow = max(10,ex.PreICI+ex.SufICI-50);
+                        minhigh = max(10,ex.CondDur-50);
+                    end
+                    [eventsynctime,eventsyncdata] = cleannoisedigital(eventsynctime,eventsyncdata,minlow,minhigh);
+                end
                 if length(ses)==length(eventsyncdata) && all(diff(double(eventsyncdata)))
                     iseventsyncerror=false;
                 else
                     iseventsyncerror=true;
+                    warning('Event Sync Error.');
                 end
                 ex.eventsyncintegrity=~iseventsyncerror;
             end
@@ -181,10 +218,15 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             if iseventmeasure
                 eventmeasuretime = dataset.digital(eventmeasurechidx).time;
                 eventmeasuredata = dataset.digital(eventmeasurechidx).data;
+                if displayfallriselagdiff~=0
+                    fallindex = eventmeasuredata==0;
+                    eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfallriselagdiff;
+                end
                 if length(ses)==length(eventmeasuredata) && all(diff(double(eventmeasuredata)))
                     iseventmeasureerror=false;
                 else
                     iseventmeasureerror=true;
+                    warning('Event Measure Error.');
                 end
                 ex.eventmeasureintegrity=~iseventmeasureerror;
             end
@@ -229,22 +271,25 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     issynccondoff = isfield(ex.CondTest,'Sync_SUFICI');
     iscommandcondoff = isfield(ex.CondTest,'Command_SUFICI');
     
-    % Calculate measured display latency and timer drift speed
+    % ReEvaluate Timing Params
     if ismeasurecondon && issynccondon
         m = firsteventtime('Measure_COND');
         s = firsteventtime('Sync_COND');
-        ex.MeasureMeanDisplayLatency = nanmean(m-s);
-        ex.MeasureSTDDisplayLatency = nanstd(m-s);
-        displaylatency = ex.MeasureMeanDisplayLatency;
+        ex.MeanSyncToMeasureDelay = nanmean(m-s);
+        ex.STDSyncToMeasureDelay = nanstd(m-s);
+        displaylatency = ex.MeanSyncToMeasureDelay;
     end
     if issynccondon && iscommandcondon
         s = firsteventtime('Sync_COND')';
-        v = arrayfun(@(x)reftotime(x,ex.t0,ex.TimerDriftSpeed),firsteventtime('Command_COND')');
+        v = arrayfun(@(x)reftotime(x,ex.t0,timerdriftspeed),firsteventtime('Command_COND')');
         valid = ~isnan(s) & ~isnan(v);
         s = s(valid); v = v(valid);
         X = [ones(length(s),1), v];
         e = X\(s-v);
-        ex.MeasureTimerDriftSpeed = e(2);
+        ex.CommandToSyncDelay = e(1);
+        ex.ReEvalTimerDriftSpeed = e(2);
+        ex.t0 = ex.CommandToSyncDelay;
+        timerdriftspeed = ex.ReEvalTimerDriftSpeed;
     end
     
     condonversion='None';condoffversion='None';

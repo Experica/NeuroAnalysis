@@ -170,7 +170,7 @@ if ~isempty(dataset)
     if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
         nsample=double(dataset.ap.meta.nFileSamp);
         chn = double(dataset.ap.meta.nSavedChans);
-        if dataset.ap.meta.snsApLfSy(3)<=0%>0
+        if dataset.ap.meta.snsApLfSy(3)>0
             binmap = memmapfile(dataset.ap.meta.fileName,'Format',{'uint16',[chn,nsample],'ap'});
             dataset.ap.digital=NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.ap(chn,:),nsample,16);
         end
