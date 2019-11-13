@@ -39,7 +39,7 @@ if isfield(ex.CondTest,'BlockRepeat')
     ex.CondTest.BlockRepeat(cellfun(@isempty,ex.CondTest.BlockRepeat)) = {-1};
     ex.CondTest.BlockRepeat = cellfun(@(x)int64(x), ex.CondTest.BlockRepeat);
 end
-%% Init default timing params
+%% Init default timing params, all times will be converted to the reference timeline of DAQ Device where data are collected and time stampped
 ex.t0=54;
 displaylatency = ex.Config.Display.(ex.Display_ID).Latency;
 timerdriftspeed = ex.TimerDriftSpeed;
@@ -73,24 +73,6 @@ if ~isempty(dataset)
     end
 end
 %%
-    function [cdt,cdv] = cleannoisedigital(dt,dv,minlowdur,minhighdur)
-        cdt=dt(1);cdv=dv(1);
-        hi=find(dv==1);
-        for i=2:length(hi)
-            shi = hi(i);
-            sli = hi(i)-1;
-            slt = dt(sli);
-            sht = dt(shi);
-            if ((sht-slt) > minlowdur) && ((slt-cdt(end)) > minhighdur)
-                cdt = [cdt,slt,sht];
-                cdv = [cdv,dv(sli),dv(shi)];
-            end
-        end
-        if dv(end)==0
-            cdt=[cdt,dt(end)];
-            cdv=[cdv,0];
-        end
-    end
     function searchrecover(from,to,data,latency,sr)
         names = fieldnames(ex.CondTest);
         fromnames = names(cellfun(@(x)startsWith(x,from),names));
@@ -195,15 +177,16 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             if iseventsync
                 eventsynctime = dataset.digital(eventsyncchidx).time;
                 eventsyncdata = dataset.digital(eventsyncchidx).data;
+                % clean noisy digital caused by logical high very close to threshold
                 if length(ses)~=length(eventsyncdata)
                     if ex.PreICI ==0 && ex.SufICI==0
-                        minlow = max(10,ex.CondDur-50);
-                        minhigh = minlow;
+                        minlowdur = max(10,ex.CondDur-50);
+                        minhighdur = minlowdur;
                     else
-                        minlow = max(10,ex.PreICI+ex.SufICI-50);
-                        minhigh = max(10,ex.CondDur-50);
+                        minlowdur = max(10,ex.PreICI+ex.SufICI-50);
+                        minhighdur = max(10,ex.CondDur-50);
                     end
-                    [eventsynctime,eventsyncdata] = cleannoisedigital(eventsynctime,eventsyncdata,minlow,minhigh);
+                    [eventsynctime,eventsyncdata] = cleannoisedigital(eventsynctime,eventsyncdata,minlowdur,minhighdur);
                 end
                 if length(ses)==length(eventsyncdata) && all(diff(double(eventsyncdata)))
                     iseventsyncerror=false;
@@ -218,6 +201,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             if iseventmeasure
                 eventmeasuretime = dataset.digital(eventmeasurechidx).time;
                 eventmeasuredata = dataset.digital(eventmeasurechidx).data;
+                % Correct digital lag caused by asymmetrical black/white display response time
                 if displayfallriselagdiff~=0
                     fallindex = eventmeasuredata==0;
                     eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfallriselagdiff;
@@ -271,7 +255,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     issynccondoff = isfield(ex.CondTest,'Sync_SUFICI');
     iscommandcondoff = isfield(ex.CondTest,'Command_SUFICI');
     
-    % ReEvaluate Timing Params
+    % Re-Evaluate Timing Params
     if ismeasurecondon && issynccondon
         m = firsteventtime('Measure_COND');
         s = firsteventtime('Sync_COND');
@@ -286,10 +270,13 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         s = s(valid); v = v(valid);
         X = [ones(length(s),1), v];
         e = X\(s-v);
+        % intercept is the supposed fixed delay
         ex.CommandToSyncDelay = e(1);
-        ex.ReEvalTimerDriftSpeed = e(2);
+        % slope would be the drift speed caused by different timers of Command and DAQ Device
+        ex.EvalTimerDriftSpeed = e(2);
+        % the fixed CommandToSyncDelay sould be very short, so the remaining would be the DAQ time of Command t0
         ex.t0 = ex.CommandToSyncDelay;
-        timerdriftspeed = ex.ReEvalTimerDriftSpeed;
+        timerdriftspeed = ex.EvalTimerDriftSpeed;
     end
     
     condonversion='None';condoffversion='None';
