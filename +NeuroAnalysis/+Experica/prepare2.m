@@ -180,11 +180,11 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 % clean noisy digital caused by logical high very close to threshold
                 if length(ses)~=length(eventsyncdata)
                     if ex.PreICI ==0 && ex.SufICI==0
-                        minlowdur = max(10,ex.CondDur-50);
+                        minlowdur = max(8,ex.CondDur-100);
                         minhighdur = minlowdur;
                     else
-                        minlowdur = max(10,ex.PreICI+ex.SufICI-50);
-                        minhighdur = max(10,ex.CondDur-50);
+                        minlowdur = max(8,ex.PreICI+ex.SufICI-100);
+                        minhighdur = max(8,ex.CondDur-100);
                     end
                     [eventsynctime,eventsyncdata] = cleannoisedigital(eventsynctime,eventsyncdata,minlowdur,minhighdur);
                 end

@@ -46,6 +46,13 @@ issortconcat = p.Results.IsConcat;
 exportdir = p.Results.exportdir;
 global batchexportcallback
 %% Prepare all data files
+probeinfo=[];
+[thisdir,~,~] = fileparts(mfilename('fullpath'));
+probefilepath = fullfile(thisdir,'NeuropixelProbeInfo.yaml');
+if(exist(probefilepath,'file')==2)
+    probeinfo = yaml.ReadYaml(probefilepath);
+end
+
 dataset = [];
 secondperunit=1;
 [filedir,filename,ext] = fileparts(filepath);
@@ -136,6 +143,17 @@ if ~isempty(dataset)
                     meta.refch = int64([36, 75, 112, 151, 188, 227, 264, 303, 340, 379]+1);
                 else
                     meta.refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
+                end
+                % include bad channel
+                cpn = ['SN_',num2str(meta.imProbeSN)];
+                if isstruct(probeinfo) && isfield(probeinfo,cpn)
+                    badch = probeinfo.(cpn).(ds).badch;
+                    for i = 1: length(badch)
+                        if ischar(badch{i})
+                            badch{i} = str2num(badch{i});
+                        end
+                    end
+                    meta.badch = int64(cell2mat(badch)+1);
                 end
                 % probe channel spacing[x,y,z] in um
                 meta.probespacing = [16,20,0];

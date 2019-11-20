@@ -8,7 +8,7 @@ if iscell(dataset)
     binfiles = cellfun(@(x)x.ap.meta.fileName,datasets,'uniformoutput',0);
     binfiledate = cellfun(@(x)x.ap.meta.fileDate,datasets);
     binfilensample= cellfun(@(x)x.ap.meta.nFileSamp,datasets);
-    nch = datasets{1}.ap.meta.nSavedChans;
+    
     [~,isort]=sort(binfiledate);
     binfiles=binfiles(isort);
     binfilensample = binfilensample(isort);
@@ -35,6 +35,7 @@ if iscell(dataset)
     end
     concatfilepath = [concatfilepath,'.bin'];
     % concat binary files
+    nch = datasets{1}.ap.meta.nSavedChans;
     if exist(concatfilepath,'file')
         disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
     else
@@ -62,18 +63,17 @@ if iscell(dataset)
     % concat binary file kilosort
     cdataset.secondperunit = datasets{1}.secondperunit;
     cdataset.filepath = dataset;
+    cdataset.ap.meta = datasets{1}.ap.meta;
     cdataset.ap.meta.fileName=concatfilepath;
-    cdataset.ap.meta.fs = datasets{1}.ap.meta.fs;
-    cdataset.ap.meta.nSavedChans = nch;
     cdataset.binfilerange = NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),cdataset.ap.meta.fs,cdataset.secondperunit);
+    clear datasets % reclaim memory before KiloSort
     cdataset = NeuroAnalysis.SpikeGLX.KiloSort(cdataset);
     % split sorting result into each original dataset
     disp('Split Sorting Result Into Dataset        ...');
     spike = cdataset.spike_kilosort;
-    for i=1:length(datasets)
-        odataset = datasets{i};
+    for i=1:length(dataset)
+        odataset = matfile(dataset{i},'Writable',true);
         odataset.spike_kilosort = NeuroAnalysis.Base.splitspike(spike,cdataset.binfilerange(i:i+1));
-        save(odataset.filepath,'-struct','odataset','-v7.3');
     end
     disp('Split Sorting Result Into Dataset        Done.');
     return;
@@ -90,7 +90,21 @@ ops.fbinary = dataset.ap.meta.fileName;
 
 % the probe channel map
 [thisdir,~,~] = fileparts(mfilename('fullpath'));
-ops.chanMap = fullfile(thisdir,'NeuropixelPhase3A_KilosortChannelMap.mat');
+ops.chanMap = load(fullfile(thisdir,'NeuropixelPhase3A_KilosortChannelMap.mat'));
+
+% bad channels
+if dataset.ap.meta.rorefch(1)==0
+    badch = dataset.ap.meta.refch;
+else
+    badch=dataset.ap.meta.rorefch(1);
+end
+if isfield(dataset.ap.meta,'badch')
+    badch = union(badch,dataset.ap.meta.badch);
+end
+if ~isempty(badch)
+    disp(['Excluding Bad Channels: ', num2str(badch)])
+    ops.chanMap.connected(badch)=0;
+end
 
 % sample rate
 ops.fs = dataset.ap.meta.fs;
