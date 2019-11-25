@@ -153,7 +153,7 @@ if ~isempty(dataset)
                             badch{i} = str2num(badch{i});
                         end
                     end
-                    meta.badch = int64(cell2mat(badch)+1);
+                    meta.badch = int64(unique(cell2mat(badch))+1);
                 end
                 % probe channel spacing[x,y,z] in um
                 meta.probespacing = [16,20,0];
