@@ -25,15 +25,18 @@ if iscell(dataset)
     else
         concatname=cell(size(binfiles));
         for i=1:length(binfiles)
-            [binrootdir,concatname{i},~] = fileparts(binfiles{i});
+            [binrootdir,fn,~] = fileparts(binfiles{i});
+            tn = strsplit(fn,'_');
+            tn(cellfun(@(x)isempty(x),tn))=[];
+            concatname{i} = cellfun(@(x)x(1),tn);
         end
     end
-    concatname=strjoin(concatname,'__');
+    concatname=strjoin(concatname,'-');
     concatfilepath = fullfile(binrootdir,concatname);
-    if length(concatfilepath)>240
-        concatfilepath = concatfilepath(1:240); % limit path name length on NTFS
+    if length(concatfilepath)>150
+        concatfilepath = concatfilepath(1:150); % limit path name length on NTFS
     end
-    concatfilepath = [concatfilepath,'.bin'];
+    concatfilepath = [concatfilepath,'.join.bin'];
     % concat binary files
     nch = datasets{1}.ap.meta.nSavedChans;
     if exist(concatfilepath,'file')
