@@ -170,9 +170,8 @@ dataset.earlyfinish = true;
             return
         end
         disp(['Merge Phy Result to Dataset:    ',datasetpath,'    ...']);
-        odataset = load(datasetpath);
+        odataset = matfile(datasetpath,'Writable',true);
         odataset.spike_kilosort = NeuroAnalysis.Base.copyStructFields(spike,odataset.spike_kilosort);
-        save(datasetpath,'-struct','odataset','-v7.3');
         disp(['Merge Phy Result to Dataset:    ',datasetpath,'    Done.']);
     end
 end
