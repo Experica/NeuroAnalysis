@@ -98,6 +98,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         
         for i=1:length(l.param)
             ip = l.param{i};
+            if strcmp(ex.ID, 'PG') && strcmp(ip{1}, 'ori')
+                ip{1} = 'Dir';
+            end
             ex.Factor.(ip{1})=ip{2};
         end
         
@@ -135,6 +138,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         ctc = struct;
         cti=[];
         factornames = fieldnames(ex.Factor);
+
         for i=1:length(factornames)
             ctc.(factornames{i})={};
         end
@@ -144,6 +148,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 cti=[cti,ic.repeats{j}.trialno];
                 for k=1:length(ic.symbol)
                     sym = ic.symbol{k};
+                    if strcmp(ex.ID, 'PG') && strcmp(sym, 'ori')
+                        sym = 'Dir';
+                    end
                     val = ic.val{k};
                     if strcmp(sym,'blank')
                         sym=factornames{k};
@@ -396,7 +403,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         ex.trialOnTimeCorrect =  ex.CondTest.TrialOn + (0.5-(ex.CondTest.TrialOn - floor(ex.CondTest.TrialOn))) * ex.timeperFrame;  % corrected on time
         ex.trialOffTimeCorrect =  ex.CondTest.TrialOff + (0.5-(ex.CondTest.TrialOff - floor(ex.CondTest.TrialOff))) * ex.timeperFrame; % corrected off time
         ex.firstScan = ex.CondTest.TrialOn(1) - sbxFrameId(1) * ex.timeperFrame;  % time of start first frame.
-        ex.frameTimeSer = [1:sbx.max_idx].* ex.timeperFrame + ex.firstScan + ex.timeperFrame/2;      % time series for every frame in whole recording.
+        ex.frameTimeSer = [1:sbx.totalFrame].* ex.timeperFrame + ex.firstScan - ex.timeperFrame/2;      % time series for every frame in whole recording.
         ex.timeShiftOn = ex.frameTimeSer(sbx.frame(1:2:end)) - ex.trialOnTimeCorrect;
         ex.timeShiftOff = ex.frameTimeSer(sbx.frame(2:2:end)) - ex.trialOffTimeCorrect;
     end

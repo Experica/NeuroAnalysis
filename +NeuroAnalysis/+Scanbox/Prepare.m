@@ -18,7 +18,7 @@ filepath = p.Results.filepath;
 dataset = struct;
 % dataset = [];
 
-% filepath = 'O:\AF4\2P_data\U004\metaFiles\AF4_u004_004.analyzer';  % for test
+% filepath = 'O:\AF4\2P_data\U004\metaFiles\AF4_u004_005.analyzer';  % for test
 
 [filedir,filename,ext] = fileparts(filepath);
 
