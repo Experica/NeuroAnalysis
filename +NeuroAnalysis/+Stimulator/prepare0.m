@@ -142,7 +142,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         for i=1:length(factornames)
             ctc.(factornames{i})={};
         end
-        for i=1:length(lp.conds)
+        for i=1:length(lp.conds)   % All conditions test in expt
             ic = lp.conds{i};
             for j=1:length(ic.repeats)
                 cti=[cti,ic.repeats{j}.trialno];
@@ -166,6 +166,11 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         end
         ex.nTrial = length(cti);
         ex.CondTestCond=ctc;
+        if isfield(ex.CondTestCond,'colormod')
+            ex.ID = 'DirSFColor';
+        else
+            ex.ID = 'DirSF';
+        end
         %% Parse Stimulator Log
         if isfield(ex.raw,'log')
             log = ex.raw.log;
@@ -200,11 +205,11 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         end
         
         %% Convert Grating Drifting Direction to Orientation
-        if strcmp(ex.ID,'PG')
-            if isfield(ex.CondTestCond,'Ori')
-                ex.CondTestCond.Ori = mod(ex.CondTestCond.Ori+270,360);
-            end
-        end
+%         if strcmp(ex.ID,'PG')
+%             if isfield(ex.CondTestCond,'Dir')
+%                 ex.CondTestCond.Ori = mod(ex.CondTestCond.Dir-90,180);
+%             end
+%         end
         %% Get Ori, SpatialFreq and SpatialPhase from Hartley Space parameters(horizontal ori = 0)
         function [c]=parsehartley(p,size)
             oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
@@ -348,9 +353,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         end
                     else
                         if isfield(ex.CondTestCond,'colormod')
-                            ex.ID = 'OriSFColor';
+                            ex.ID = 'DirSFColor';
                         else
-                            ex.ID = 'OriSF';
+                            ex.ID = 'DirSF';
                         end
                         if ex.nTrial == length(ex.(daqType).digital(2).time)/4 % photodiode
                             ex.CondTest.CondOn=sample2time(ex.(daqType).digital(2).time(1:4:end),ex.(daqType).fs,dataset.secondperunit)+ex.PreICI;
