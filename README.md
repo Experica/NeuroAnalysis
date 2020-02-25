@@ -9,7 +9,8 @@ DataExport is the GUI for converting raw data in different files and formats of 
 Supported data format: 
 * [Ripple](https://rippleneuro.com/)
 * [SpikeGLX](http://billkarsh.github.io/SpikeGLX/)
-* [Optical Imageing](https://opt-imaging.com/)
+* [Scanbox](https://scanbox.org/)
+* [Optical Imaging](https://opt-imaging.com/)
 * [Experica](https://experica.org/)
 * Stimulator
 * VisStim
