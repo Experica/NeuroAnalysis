@@ -1,5 +1,5 @@
 function [dataset] = Prepare(phydir,varargin)
-%PREPARE Summary of this function goes here
+%PREPARE Read Phy result in phydir and merge back to dataset
 %   Detailed explanation goes here
 
 p = inputParser;
@@ -37,8 +37,12 @@ exportdir = p.Results.exportdir;
         cgs(isGood) = 1;
         cgs(isMUA) = 2;
         cgs(isUns) = 3;
+        
+        [~,isort] = sort(cids);
+        cids = cids(isort);
+        cgs = cgs(isort);
     end
-%% load spike data
+%% load Phy data
 dataset=[];
 if ~exist(phydir,'dir')
     warning('No Phy Dir:    %s', phydir);
@@ -85,9 +89,12 @@ end
 if exist(fullfile(phydir, 'cluster_KSLabel.tsv'),'file')
     cgsKSFile = fullfile(phydir, 'cluster_KSLabel.tsv');
 end
+% every cluster labeled by Kilosort and Phy
 iscgKS = ~isempty(cgsKSFile);
 if iscgKS
-    [cidsKS, cgsKS] = readClusterGroupsCSV(cgsKSFile);
+    [cidsKS, cgsKS] = readClusterGroupsCSV(cgsKSFile); % cluster ids already sorted
+else
+    error('No KS cluster group labels.');
 end
 
 cgsFile = '';
@@ -97,33 +104,36 @@ end
 if exist(fullfile(phydir, 'cluster_group.tsv'),'file')
     cgsFile = fullfile(phydir, 'cluster_group.tsv');
 end
+% clusters labeled by Phy operator
 iscg = ~isempty(cgsFile);
 if iscg
-    [cids, cgs] = readClusterGroupsCSV(cgsFile);
+    [cids, cgs] = readClusterGroupsCSV(cgsFile); % cluster ids already sorted
     
+    % noise clusters are labeled by Phy operator
     if excludenoise
-        noiseClusters = cids(cgs==0);
-        phycgs = cgs(~ismember(cids, noiseClusters));
-        phycids = cids(~ismember(cids, noiseClusters));
-        vi = ~ismember(clu, noiseClusters);
+        noisecluidx = cgs==0;
+        noisecluid = cids(noisecluidx);
         
+        cgs = cgs(~noisecluidx);
+        cids = cids(~noisecluidx);
+        vi = ~ismember(clu, noisecluid);
         if loadpc
             pcFeat = pcFeat(vi, :,:);
             %pcFeatInd = pcFeatInd(~ismember(cids, noiseClusters),:);
         end
-        
         ss = ss(vi);
         spikeTemplates = spikeTemplates(vi);
         tempScalingAmps = tempScalingAmps(vi);
         clu = clu(vi);
         
+        % overwrite KS labels with Phy labels
         if iscgKS
-            cgsKS = cgsKS(~ismember(cidsKS, noiseClusters));
-            cidsKS = cidsKS(~ismember(cidsKS, noiseClusters));
-            for i=1:length(phycids)
-                cgsKS(phycids(i)==cidsKS) = phycgs(i);
+            noisecluksidx = ismember(cidsKS, noisecluid);
+            cgsKS = cgsKS(~noisecluksidx);
+            cidsKS = cidsKS(~noisecluksidx);
+            for i=1:length(cids)
+                cgsKS(cids(i)==cidsKS) = cgs(i);
             end
-            phycgs = cgsKS;
         end
     end
 end
@@ -134,29 +144,29 @@ spike.time = NeuroAnalysis.Base.sample2time(double(ss),spike.fs,spike.secondperu
 spike.amplitude = tempScalingAmps;
 spike.template = int64(spikeTemplates)+1;
 spike.cluster = int64(clu)+1;
-spike.clusterid = unique(spike.cluster);
+spike.clusterid = unique(spike.cluster); % already sorted in `unique`
+spike.clustergood = cgsKS; % match the already sorted cluster ids
+% get kilosort templates for each cluster, use first spike of each cluster to find template index, even for merged clusters
+spike.clustertemplates = temps(spike.template(arrayfun(@(x)find(x==spike.cluster,1),spike.clusterid)),:,:);
+
 spike.chanmap = chmap;
 spike.channelposition = coords;
 spike.whiteningmatrix = w;
 spike.whiteningmatrixinv = winv;
-spike.clustertemplates = temps(spike.template(arrayfun(@(x)find(x==spike.cluster,1),spike.clusterid)),:,:); % match clusterid
-if iscg
-    spike.clustergood = phycgs;
-elseif iscgKS
-    spike.clustergood = cgsKS;
-end
 spike.pcFeat = pcFeat;
 spike.pcFeatInd = pcFeatInd;
-spike.ischecked=true;
+spike.qcversion='Phy';
+spike.qc = [];
 %% Merge to Dataset
 ds = split(spike.dataset_path,', ');
 if length(ds)>1
+    % result is from concat binary file, need to split it for each dataset
     if isbinfilerange
         for i=1:length(ds)
             merge2dataset(ds{i},NeuroAnalysis.Base.splitspike(spike,binfilerange(i:i+1)));
         end
     else
-        warning('Need binfilerange file to split result to dataset.');
+        warning('Need `binfilerange` file to split result to each dataset.');
         return
     end
 else

@@ -48,7 +48,7 @@ global batchexportcallback
 %% Prepare all data files
 probeinfo=[];
 [thisdir,~,~] = fileparts(mfilename('fullpath'));
-probefilepath = fullfile(thisdir,'NeuropixelProbeInfo.yaml');
+probefilepath = fullfile(thisdir,'NeuropixelsProbeInfo.yaml');
 if(exist(probefilepath,'file')==2)
     probeinfo = yaml.ReadYaml(probefilepath);
 end
@@ -129,7 +129,25 @@ if ~isempty(dataset)
                 meta.fi2v = meta.imAiRangeMax / 512;
                 meta.snsApLfSy = int64(meta.snsApLfSy);
                 meta.acqApLfSy = int64(meta.acqApLfSy);
-                
+                % imec probe version
+                if isfield(meta, 'imDatPrb_type')
+                    meta.probeversion = str2num(meta.imDatPrb_type);
+                else
+                    meta.probeversion = 0; % Phase3A probe
+                end
+                % No. of channels multiplexed into one ADC
+                switch (meta.probeversion)
+                    case 2
+                    otherwise
+                        nchmx = 12; % Phase3A - 1.0 are all 12
+                end
+                nch = meta.acqApLfSy(1);
+                dmxgroup = cell(nchmx,1);
+                for g = 1:nchmx
+                    dmxgroup{g} = g + (0:nchmx:nch-nchmx);
+                end
+                meta.nchmx = nchmx;
+                meta.dmxgroup = dmxgroup;
                 % imec readout table
                 C = textscan(meta.imroTbl, '(%d %d %d %d %d', ...
                     'EndOfLine', ')', 'HeaderLines', 1 );
@@ -144,7 +162,7 @@ if ~isempty(dataset)
                 else
                     meta.refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
                 end
-                % include bad channel
+                % bad channels
                 cpn = ['SN_',num2str(meta.imProbeSN)];
                 if isstruct(probeinfo) && isfield(probeinfo,cpn)
                     badch = probeinfo.(cpn).(ds).badch;
@@ -155,8 +173,22 @@ if ~isempty(dataset)
                     end
                     meta.badch = int64(unique(cell2mat(badch))+1);
                 end
+                % exclude channels
+                if strcmp(ds,'ap')
+                    if meta.rorefch(1)==0
+                        excludechans = meta.refch;
+                    else
+                        excludechans = meta.rorefch(1);
+                    end
+                else
+                    excludechans = meta.refch;
+                end
+                if isfield(meta,'badch')
+                    excludechans = union(excludechans,meta.badch);
+                end
+                meta.excludechans = excludechans;
                 % probe channel spacing[x,y,z] in um
-                meta.probespacing = [16,20,0];
+                meta.probespacing = [32,20,0];
                 if isfield(meta,'snsShankMap')
                     header = int64(str2num(regexp(meta.snsShankMap,'([1-9,]*)','match','once')));
                     meta.nshank = header(1);
@@ -187,10 +219,16 @@ if ~isempty(dataset)
     end
     if isfield(dataset,'ap') && ~isempty(dataset.ap.meta.fileName)
         nsample=double(dataset.ap.meta.nFileSamp);
-        chn = double(dataset.ap.meta.nSavedChans);
+        nch = double(dataset.ap.meta.nSavedChans);
         if dataset.ap.meta.snsApLfSy(3)>0
-            binmap = memmapfile(dataset.ap.meta.fileName,'Format',{'uint16',[chn,nsample],'ap'});
-            dataset.ap.digital=NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.ap(chn,:),nsample,16);
+            binmap = memmapfile(dataset.ap.meta.fileName,'Format',{'uint16',[nch,nsample],'ap'});
+            digital=NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.ap(nch,:),nsample,16);
+            if ~isempty(digital)
+                for i=1:length(digital)
+                    digital(i).time = NeuroAnalysis.Base.sample2time(digital(i).time,dataset.ap.meta.fs,dataset.secondperunit);
+                end
+                dataset.ap.digital = digital;
+            end
         end
         
         if iscell(batchexportcallback) && issortconcat && ~strcmp(spikesorting,'None')

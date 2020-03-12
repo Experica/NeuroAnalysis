@@ -1,17 +1,17 @@
 function [cdt,cdv] = cleannoisedigital(dt,dv,minlowdur,minhighdur)
-%CLEANNOISEDIGITAL Summary of this function goes here
-%   Detailed explanation goes here
+%CLEANNOISEDIGITAL clean noisy digital caused by logical high very close to threshold,
+% assume init state is low and no low-low or high-high events ever occured
 
 cdt=dt(1);cdv=dv(1);
-hi=find(dv==1);
-for i=2:length(hi)
-    chi = hi(i);
-    cli = hi(i)-1;
-    clt = dt(cli);
-    cht = dt(chi);
-    if ((cht-clt) >= minlowdur) && ((clt-cdt(end)) >= minhighdur)
-        cdt = [cdt,clt,cht];
-        cdv = [cdv,dv(cli),dv(chi)];
+his=find(dv==1);
+for i=2:length(his)
+    hi = his(i);
+    li = hi-1;
+    lt = dt(li);
+    ht = dt(hi);
+    if ((ht-lt) >= minlowdur) && ((lt-cdt(end)) >= minhighdur)
+        cdt = [cdt,lt,ht];
+        cdv = [cdv,dv(li),dv(hi)];
     end
 end
 if dv(end)==0

@@ -1,5 +1,5 @@
-function [t] = reftotime(reft,t0,timerdriftspeed,latency)
-%REFTOTIME Convert Reference Time to Original Time
+function [t] = ref2time(reft,t0,timerdriftspeed,latency)
+%REF2TIME Convert Reference Time to Original Time
 %   Detailed explanation goes here
 
 if nargin==3

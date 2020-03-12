@@ -1,8 +1,8 @@
 function [dchs] = parsedigitalbitinanalog(stream,n,nbitpersample)
-%PARSEDIGITALBITINANALOG Get digital flips in stream sample bits
-%   Detailed explanation goes here
+%PARSEDIGITALBITINANALOG Get digital flips in stream sample bits.
+% Return values(0/1) and times(sample index) for each channel in which digital signal are found.
 
-p=stream(1);pbit=bitget(p,1:nbitpersample);ts=cell(nbitpersample,1);vs=cell(nbitpersample,1);
+p=stream(1);pbit=bitget(p,1:nbitpersample);ts=cell(nbitpersample,1);vs=cell(nbitpersample,1);dchs=[];
 for i=2:n
     c=stream(i);
     if c==p

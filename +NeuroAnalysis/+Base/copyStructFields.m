@@ -1,4 +1,4 @@
-%
+function target = copyStructFields(src,target,fieldsSrc,valueFun)
 %copies a list of fields from a source to a target structure
 %
 %fields -> cell array of strings. entries in the cell array can also be an other cell array
@@ -13,7 +13,7 @@
 %
 %urut/may07
 %modified leo scholl december 2017
-function target = copyStructFields(src,target,fieldsSrc,valueFun)
+
 if ~isstruct(src)
     warning('src is not a struct - ignore. nothing is copied.');
     return;
@@ -40,7 +40,7 @@ for i=1:length(fieldsSrc)
         fieldTarget=fieldSrc;
     end
     
-    if isfield(src,fieldSrc) 
+    if isfield(src,fieldSrc)
         if ~isempty(valueFun)
             target.(fieldTarget) = valueFun(src.(fieldSrc));   %a dynamic field name instead of eval
         else

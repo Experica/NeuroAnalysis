@@ -1,12 +1,12 @@
-function [st] = trysearchtime(t,ints,sr)
-%TRYSEARCHTIME Try to search the closest time in a time sequence
+function [st] = trysearchtime(t,tseq,sr)
+%TRYSEARCHTIME Try to search the closest time in a time sequence around a perdicted time within a search radius
 %   Detailed explanation goes here
 
 tc=[];
-for i =1:length(ints)
-    d = ints(i)-t;
+for i =1:length(tseq)
+    d = tseq(i)-t;
     if abs(d)<= sr
-        tc=[tc,ints(i)];
+        tc=[tc,tseq(i)];
     end
     if d> sr
         break;

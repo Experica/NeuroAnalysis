@@ -3,13 +3,13 @@ function [ts] = findeventtime(eventtimes,events)
 %   Detailed explanation goes here
 
 ts=[];
-sidx=1;
+start=1;
 net=length(eventtimes);
 for j=1:length(events)
-    for i=sidx:net
+    for i=start:net
         if isfield(eventtimes{i},events{j})
             ts=[ts,eventtimes{i}.(events{j})];
-            sidx=i+1;
+            start=i+1;
             break;
         end
     end
