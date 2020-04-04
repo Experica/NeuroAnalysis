@@ -117,9 +117,6 @@ ops.fs = dataset.ap.meta.fs;
 % frequency for high pass filtering
 ops.fshigh = 300;
 
-% frequency for low pass filtering
-ops.fslow = 3000;
-
 % minimum firing rate on a "good" channel (0 to skip)
 ops.minfr_goodchannels = 1/300;
 
