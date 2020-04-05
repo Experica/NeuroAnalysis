@@ -166,9 +166,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         end
         ex.nTrial = length(cti);
         ex.CondTestCond=ctc;
-        if isfield(ex.CondTestCond,'colormod')
+        if isfield(ex.CondTestCond,'colormod') && strcmp(ex.ID, 'PG')
             ex.ID = 'DirSFColor';
-        else
+        elseif ~isfield(ex.CondTestCond,'colormod') && strcmp(ex.ID, 'PG')
             ex.ID = 'DirSF';
         end
         %% Parse Stimulator Log
@@ -210,33 +210,64 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
 %                 ex.CondTestCond.Ori = mod(ex.CondTestCond.Dir-90,180);
 %             end
 %         end
-        %% Get Ori, SpatialFreq and SpatialPhase from Hartley Space parameters(horizontal ori = 0)
+        %% Get Ori, SpatialFreq and SpatialPhase from Hartley Space parameters(horizontal ori = 0), PL
         function [c]=parsehartley(p,size)
             oridom = p(1);kx=p(2);ky=p(3);bwdom=p(4);colordom=p(5);
             if kx==0 && ky~=0   % 0
                 c.Ori=0;
             elseif ky==0 && kx~=0   % 90
                 c.Ori=90;
-            elseif kx*ky > 0   % (90 180)
-                c.Ori = 180 - atand(ky/kx);
-            elseif kx*ky < 0   % (0 90)
-                c.Ori = abs(atand(ky/kx));
+            elseif kx*ky > 0   % (0 90)
+                c.Ori = atand(kx/ky); 
+            elseif kx*ky < 0   % (90 180)
+                c.Ori = 180 - atand(abs(kx/ky));
             else
                 c.Ori=NaN;
             end
             c.SpatialFreq = sqrt((kx/size(1))^2 + (ky/size(2))^2);
             
-            if ky>=0
-                q=0;
-                if kx<0 && ky==0
-                    q=0.25;
+            % The phase here is the phase calculated at the edge of image, PL
+            % if kx>=0
+            %     q=0.125;
+            %     if ky<0 && kx==0
+            %         q=0.375;
+            %     end
+            % else
+            %     q=0.375;
+            % end
+            % if bwdom==-1
+            %     q=q+0.5;
+            % end
+
+            % The phase here is the phase calculated at the center of image for regeneration in Julia & Experica, PL
+            if mod(kx+kx,2) == 0
+                if kx>=0
+                    q=0.125;
+                    if ky<0 && kx==0
+                        q=0.375;
+                    end
+                else
+                    q=0.375;
                 end
-            else
-                q=0.25;
+                if bwdom==-1
+                    q=q+0.5;
+                end
+            elseif mod(kx+kx,2) ~= 0
+                if kx>=0
+                    q=-0.375;
+                    if ky<0 && kx==0
+                        q=-0.125;
+                    end
+                else
+                    q=-0.125;
+                end
+                if bwdom==-1
+                    q=q-0.5;
+                end
             end
-            if bwdom==-1
-                q=q+0.5;
-            end
+            q=0.5-q; % phase 0 starts at pi(0.5) in Julia and Experica
+            q = rem(q+1,1);  % transform negative to positive
+
             c.SpatialPhase = q;
         end
     end
@@ -301,6 +332,9 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                             ex.spike2.digital(2).channel=2;    % Photodiode
                             ex.spike2.digital(2).time=di;
                             ex.spike2.digital(2).value=dv;
+%                             ex.spike2.digital(2).time=[di(1),di(1)+215, di(2:end)];
+%                             ex.spike2.digital(2).value=[dv(1),dv(1),dv(2:end)];
+
                         end
             end
                 
@@ -407,7 +441,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         ex.timeperFrame = mean(timeinTrial'./frameinTrial);  % sec per frame
         ex.trialOnTimeCorrect =  ex.CondTest.TrialOn + (0.5-(ex.CondTest.TrialOn - floor(ex.CondTest.TrialOn))) * ex.timeperFrame;  % corrected on time
         ex.trialOffTimeCorrect =  ex.CondTest.TrialOff + (0.5-(ex.CondTest.TrialOff - floor(ex.CondTest.TrialOff))) * ex.timeperFrame; % corrected off time
-        ex.firstScan = ex.CondTest.TrialOn(1) - sbxFrameId(1) * ex.timeperFrame;  % time of start first frame.
+        ex.firstScan = ex.CondTest.TrialOn(1) - sbxFrameId(1) * ex.timeperFrame + 0.2;  % time of start first frame.
         ex.frameTimeSer = [1:sbx.totalFrame].* ex.timeperFrame + ex.firstScan - ex.timeperFrame/2;      % time series for every frame in whole recording.
         ex.timeShiftOn = ex.frameTimeSer(sbx.frame(1:2:end)) - ex.trialOnTimeCorrect;
         ex.timeShiftOff = ex.frameTimeSer(sbx.frame(2:2:end)) - ex.trialOffTimeCorrect;

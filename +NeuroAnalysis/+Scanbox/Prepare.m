@@ -98,10 +98,10 @@ if(issbxdata)
         mfile = fullfile(dirinfo(i).folder, metafilenames{i});
         dataset.sbx.metafile = mfile;
         dataset.sbx = load(mfile);
-        disp(['Reading Scanbox mat Files:    ',filenameNew,'*.mat    Done.']);
+        disp(['Reading Scanbox mat Files:    ',mfile,'    Done.']);
         if ~isempty(dataset)
             dataset.source = metafilenames{i};
-            dataset.sourceformat = 'Stimulator';
+            dataset.sourceformat = 'Scanbox';
             dataset.DAQformat = 'Scanbox';
 %             if ~isempty(exportdir)
             dataset.filepath = fullfile(dirinfo(i).folder,[metafilenames{i}(1:end-9),'meta.mat']);
