@@ -6,11 +6,15 @@ p = inputParser;
 addRequired(p,'phydir');
 addParameter(p,'excludenoise',true)
 addParameter(p,'loadpc',false)
+addParameter(p,'chmaskradius',65) % radius(um) within which the templates height are used to estimate position
+addParameter(p,'getclufeature',false)
 addParameter(p,'exportdir','')
 parse(p,phydir,varargin{:});
 phydir = p.Results.phydir;
 excludenoise = p.Results.excludenoise;
 loadpc = p.Results.loadpc;
+chmaskradius = p.Results.chmaskradius;
+getclufeature = p.Results.getclufeature;
 exportdir = p.Results.exportdir;
 %%
     function [cids, cgs] = readClusterGroupsCSV(filename)
@@ -51,7 +55,9 @@ end
 disp(['Reading Phy Dir:    ',phydir,'    ...']);
 spike = NeuroAnalysis.Phy.loadphyparam(fullfile(phydir, 'params.py'));
 spike.fs = spike.sample_rate;
+spike.nch = spike.n_channels_dat;
 spike = rmfield(spike,'sample_rate');
+spike = rmfield(spike,'n_channels_dat');
 
 isbinfilerange = exist(fullfile(phydir, 'binfilerange.npy'),'file');
 if isbinfilerange
@@ -140,48 +146,74 @@ end
 
 disp(['Reading Phy Dir:    ',phydir,'    Done.']);
 %% Prepare Spike
-spike.time = NeuroAnalysis.Base.sample2time(double(ss),spike.fs,spike.secondperunit);
-spike.amplitude = tempScalingAmps;
-spike.template = int64(spikeTemplates)+1;
-spike.cluster = int64(clu)+1;
-spike.clusterid = unique(spike.cluster); % already sorted in `unique`
-spike.clustergood = cgsKS; % match the already sorted cluster ids
-% get kilosort templates for each cluster, use first spike of each cluster to find template index, even for merged clusters
-spike.clustertemplates = temps(spike.template(arrayfun(@(x)find(x==spike.cluster,1),spike.clusterid)),:,:);
-
-spike.chanmap = chmap;
-spike.channelposition = coords;
-spike.whiteningmatrix = w;
-spike.whiteningmatrixinv = winv;
-spike.pcFeat = pcFeat;
-spike.pcFeatInd = pcFeatInd;
+switch (spike.from)
+    case 'kilosort'
+        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_maxwaveform_feature]...
+            = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
+        % Templates feature
+        spike.templates = temps; % nTemplates x nTimePoints x nChannels
+        spike.templatesposition = tempcoords;
+        spike.templatesamplitude = tempAmps;
+        spike.templateswaveform = templates_maxwaveform;
+        spike.templateswaveformfeature = templates_maxwaveform_feature;
+        
+        spike.chanmap = chmap+1;
+        spike.channelposition = coords;
+        spike.whiteningmatrix = w;
+        spike.whiteningmatrixinv = winv;
+        spike.pcFeat = pcFeat;
+        spike.pcFeatInd = pcFeatInd;
+        
+        spike.time = NeuroAnalysis.Base.sample2time(double(ss),spike.fs,spike.secondperunit);
+        spike.template = int64(spikeTemplates)+1;
+        spike.templatescale = tempScalingAmps;
+        spike.amplitude = spikeAmps;
+        
+        spike.cluster = int64(clu)+1;
+        spike.clusterid = unique(spike.cluster); % already sorted in `unique`
+        spike.clustergood = cgsKS; % match the already sorted cluster ids
+        
+        % Cluster feature
+        [~,fn,fe] = fileparts(spike.dat_path);
+        dirparts = strsplit(phydir,filesep);
+        bindir = join(dirparts(1:end-1),filesep);
+        binpath = fullfile(bindir{1},[fn,fe]);
+        if exist(binpath,'file') && getclufeature
+            mpbinfile = memmapfile(binpath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
+            [cluwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mpbinfile,...
+                double(ss),spike.cluster,spike.clusterid,spike.template,chmap(templates_maxwaveform_chidx),spike.fs);
+            spike.clusterwaveform = cluwaveform;
+            spike.clusterwaveformfeature = cluwaveformfeature;
+        end
+end
 spike.qcversion='Phy';
 spike.qc = [];
 %% Merge to Dataset
+fieldtomerge = ['spike_',spike.from];
 ds = split(spike.dataset_path,', ');
 if length(ds)>1
     % result is from concat binary file, need to split it for each dataset
     if isbinfilerange
         for i=1:length(ds)
-            merge2dataset(ds{i},NeuroAnalysis.Base.splitspike(spike,binfilerange(i:i+1)));
+            merge2dataset(ds{i},fieldtomerge,NeuroAnalysis.Base.splitspike(spike,binfilerange(i:i+1)));
         end
     else
         warning('Need `binfilerange` file to split result to each dataset.');
         return
     end
 else
-    merge2dataset(ds{1},spike)
+    merge2dataset(ds{1},fieldtomerge,spike);
 end
 dataset.earlyfinish = true;
 %%
-    function merge2dataset(datasetpath,spike)
+    function merge2dataset(datasetpath,mergefield,spike)
         if ~exist(datasetpath,'file')
             warning('No Corresponding Dataset to Merge to:    %s', datasetpath);
             return
         end
         disp(['Merge Phy Result to Dataset:    ',datasetpath,'    ...']);
         odataset = matfile(datasetpath,'Writable',true);
-        odataset.spike_kilosort = NeuroAnalysis.Base.copyStructFields(spike,odataset.spike_kilosort);
+        odataset.(mergefield) = NeuroAnalysis.Base.copyStructFields(spike,odataset.(mergefield));
         disp(['Merge Phy Result to Dataset:    ',datasetpath,'    Done.']);
     end
 end

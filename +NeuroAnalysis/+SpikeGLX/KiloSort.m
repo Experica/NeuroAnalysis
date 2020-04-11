@@ -49,21 +49,21 @@ if iscell(dataset)
         disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
     else
         cfid=fopen(concatfilepath,'w');
-        chucksample=1e7; % 1e7 Samples = 7.7GB for 385Chs, Int16
+        chunksample=1e7; % 1e7 Samples = 7.7GB for 385Chs, Int16
         for i=1:length(binfiles)
             fprintf('Concat Binary File:    %s    ...\n',binfiles{i});
             fid=fopen(binfiles{i},'r');
             remainingsample = binfilensample(i);
             while remainingsample>0
-                if remainingsample - chucksample >=0
-                    readsample = chucksample;
+                if remainingsample - chunksample >=0
+                    readsample = chunksample;
                 else
                     readsample = remainingsample;
                 end
-                chuckdata = fread(fid,[nchsaved,readsample],'*int16');
-                fprintf('        Demuxed CAR on chuck size:    %d    ...\n',readsample);
-                chuckdata = NeuroAnalysis.Base.dmxcar(chuckdata,dmxgroup);
-                fwrite(cfid,chuckdata,'int16');
+                chunkdata = fread(fid,[nchsaved,readsample],'*int16');
+                fprintf('        Demuxed CAR on chunk size:    %d    ...\n',readsample);
+                chunkdata = NeuroAnalysis.Base.dmxcar(chunkdata,dmxgroup);
+                fwrite(cfid,chunkdata,'int16');
                 remainingsample = remainingsample - readsample;
             end
             fclose(fid);
@@ -76,9 +76,12 @@ if iscell(dataset)
     cdataset.filepath = dataset;
     cdataset.ap.meta = datasets{1}.ap.meta;
     cdataset.ap.meta.fileName=concatfilepath;
+    cdataset.ap.meta.nFileSamp=sum(binfilensample);
+    % demuxed car already done in concat file, so we disable car in kilosort
+    cdataset.car = 0;
     % time range [t(i), t(i+1)) for each file in the concat file
     cdataset.binfilerange = NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),cdataset.ap.meta.fs,cdataset.secondperunit);
-    clear datasets chuckdata % reclaim memory before KiloSort
+    clear datasets chunkdata % reclaim memory before KiloSort
     cdataset = NeuroAnalysis.SpikeGLX.KiloSort(cdataset);
     % split sorting result into each original dataset
     disp('Split Sorting Result Into Dataset        ...');
@@ -117,6 +120,12 @@ ops.fs = dataset.ap.meta.fs;
 % frequency for high pass filtering
 ops.fshigh = 300;
 
+% frequency for low pass filtering
+% narrow spike have significent power in high frequencies(up to 10kHz), if low pass
+% filtering cuts off high freq component, the spike time would be shifted
+% and spike shape be widen, so here we are not doing low pass.
+% ops.fslow = 7000;
+
 % minimum firing rate on a "good" channel (0 to skip)
 ops.minfr_goodchannels = 1/300;
 
@@ -151,7 +160,11 @@ ops.trange = [0 Inf];
 ops.NchanTOT = double(dataset.ap.meta.nSavedChans);
 
 % common average referencing by median
-ops.CAR = 1;
+car = 1;
+if isfield(dataset,'car')
+    car = dataset.car;
+end
+ops.CAR = car;
 
 %% danger, changing these settings can lead to fatal errors
 
@@ -196,7 +209,7 @@ fprintf('Found %d / %d good units \n', sum(rez.good>0),length(rez.good))
 disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
 %% Get sorted spikes
 disp('Extract Spike Sorting Result    ...');
-spike = extractrez(rez,dataset.secondperunit);
+spike = extractrez(rez,dataset.secondperunit,65);
 disp('Extract Spike Sorting Result    done.');
 if ~isempty(spike)
     dataset.spike_kilosort=spike;
@@ -396,29 +409,19 @@ end
                 end
                 fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder usually in the sam folder of binaries
                 fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
+                fprintf(fid,'nsample = %i\n',dataset.ap.meta.nFileSamp);
                 fprintf(fid,'dtype = ''int16''\n');
                 fprintf(fid,'offset = 0\n');
                 fprintf(fid,'sample_rate = %.32f\n',rez.ops.fs);
+                fprintf(fid,'from = ''kilosort''\n');
                 fprintf(fid,'hp_filtered = False');
                 fclose(fid);
             end
         end
     end
-%% extract spikes directly from kilosort result
-    function [spike]=extractrez(rez,secondperunit)
-        spike.fs = rez.ops.fs;
-        % times for each spike, t0 is the first sample in the data stream
-        spike.time = NeuroAnalysis.Base.sample2time(rez.st3(:,1),spike.fs,secondperunit);
-        % ids of template on which spike waveform matching are based
-        spike.template = int64(rez.st3(:,2));
-        % ids of cluster where each is expected to be a single cell, here
-        % regarding each unique template as a single cell
-        spike.cluster = spike.template;
-        % unique cluser ids(already sorted in `unique`)
-        spike.clusterid = unique(spike.cluster);
-        % template scaling for each spike
-        spike.amplitude = rez.st3(:,3);
-        
+%% extract spike directly from kilosort result
+% chmaskradius(um) within which the templates height are used to estimate position
+    function [spike]=extractrez(rez,secondperunit,chmaskradius)
         W = gather(single(rez.Wphy));
         U = gather(single(rez.U));
         nt0 = size(W,1);
@@ -426,19 +429,54 @@ end
         Nch = rez.ops.Nchan;
         
         % each template in spatial(electrodes) and temporal(waveform) dimention
-        templates = zeros(Nch, nt0, Nfilt, 'single');
+        temps = zeros(Nch, nt0, Nfilt, 'single');
         for iNN = 1:Nfilt
-            templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
+            temps(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
         end
-        spike.clustertemplates = permute(templates, [3 2 1]); % nTemplates x nSamples x nChannels
-        spike.chanmap = int64(rez.ops.chanMap(:));
-        spike.channelposition = [rez.xcoords(:) rez.ycoords(:)];
-        spike.whiteningmatrix = rez.Wrot/rez.ops.scaleproc;
-        spike.whiteningmatrixinv = spike.whiteningmatrix^-1;
-        spike.clustergood = rez.good;
+        temps = permute(temps, [3 2 1]); % nTemplates x nSamples x nChannels
+        
+        w = rez.Wrot/rez.ops.scaleproc;
+        winv = w^-1;
+        coords = [rez.xcoords(:) rez.ycoords(:)];
+        spikeTimes = rez.st3(:,1);
+        spikeTemplates = rez.st3(:,2);
+        tempScalingAmps = rez.st3(:,3);
+        chanMap = rez.ops.chanMap(:);
         
         rez.ops.igood = gather(rez.ops.igood);
         spike.ops = rez.ops;
+        spike.fs = rez.ops.fs;
+        
+        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_maxwaveform_feature]...
+            = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
+        % Templates feature
+        spike.templates = temps;
+        spike.templatesposition = tempcoords;
+        spike.templatesamplitude = tempAmps;
+        spike.templateswaveform = templates_maxwaveform;
+        spike.templateswaveformfeature = templates_maxwaveform_feature;
+        
+        spike.chanmap = int32(chanMap);
+        spike.channelposition = coords;
+        spike.whiteningmatrix = w;
+        spike.whiteningmatrixinv = winv;
+        
+        % times for each spike, t0 is the first sample in the data stream
+        spike.time = NeuroAnalysis.Base.sample2time(spikeTimes,spike.fs,secondperunit);
+        % ids of template on which each spike is extracted
+        spike.template = int64(spikeTemplates);
+        % template scaling for each spike
+        spike.templatescale = tempScalingAmps;
+        % scaled unwhiten template amplitude for each spike
+        spike.amplitude = spikeAmps;
+        
+        % ids of cluster where each is expected to be a single cell, here
+        % regarding each unique template as a single cell
+        spike.cluster = spike.template;
+        % unique cluser ids(already sorted in `unique`)
+        spike.clusterid = unique(spike.cluster);
+        spike.clustergood = rez.good;
+        
         spike.qcversion = 'Kilosort2';
         spike.qc = [];
     end
