@@ -448,7 +448,7 @@ end
         spike.fs = rez.ops.fs;
         
         [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_maxwaveform_feature]...
-            = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
+            = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates-1,tempScalingAmps,spike.fs);
         % Templates feature
         spike.templates = temps;
         spike.templatesposition = tempcoords;
