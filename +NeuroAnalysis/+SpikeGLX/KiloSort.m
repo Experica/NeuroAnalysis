@@ -209,7 +209,7 @@ fprintf('Found %d / %d good units \n', sum(rez.good>0),length(rez.good))
 disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
 %% Get sorted spikes
 disp('Extract Spike Sorting Result    ...');
-spike = extractrez(rez,dataset.secondperunit,65);
+spike = extractrez(rez,dataset.secondperunit,55);
 disp('Extract Spike Sorting Result    done.');
 if ~isempty(spike)
     dataset.spike_kilosort=spike;
@@ -413,7 +413,7 @@ end
                 fprintf(fid,'dtype = ''int16''\n');
                 fprintf(fid,'offset = 0\n');
                 fprintf(fid,'sample_rate = %.32f\n',rez.ops.fs);
-                fprintf(fid,'from = ''kilosort''\n');
+                fprintf(fid,'sort_from = ''kilosort''\n');
                 fprintf(fid,'hp_filtered = False');
                 fclose(fid);
             end
@@ -447,14 +447,14 @@ end
         spike.ops = rez.ops;
         spike.fs = rez.ops.fs;
         
-        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_maxwaveform_feature]...
+        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_waveform_feature]...
             = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates-1,tempScalingAmps,spike.fs);
         % Templates feature
         spike.templates = temps;
         spike.templatesposition = tempcoords;
         spike.templatesamplitude = tempAmps;
         spike.templateswaveform = templates_maxwaveform;
-        spike.templateswaveformfeature = templates_maxwaveform_feature;
+        spike.templateswaveformfeature = templates_waveform_feature;
         
         spike.chanmap = int32(chanMap);
         spike.channelposition = coords;

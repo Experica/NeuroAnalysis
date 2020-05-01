@@ -6,8 +6,8 @@ p = inputParser;
 addRequired(p,'phydir');
 addParameter(p,'excludenoise',true)
 addParameter(p,'loadpc',false)
-addParameter(p,'chmaskradius',65) % radius(um) within which the templates height are used to estimate position
-addParameter(p,'getclufeature',false)
+addParameter(p,'chmaskradius',55) % radius(um) within which the templates height are used to estimate position
+addParameter(p,'getclufeature',true)
 addParameter(p,'exportdir','')
 parse(p,phydir,varargin{:});
 phydir = p.Results.phydir;
@@ -146,16 +146,16 @@ end
 
 disp(['Reading Phy Dir:    ',phydir,'    Done.']);
 %% Prepare Spike
-switch (spike.from)
+switch (spike.sort_from)
     case 'kilosort'
-        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_maxwaveform_feature]...
+        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_waveform_feature]...
             = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
         % Templates feature
         spike.templates = temps; % nTemplates x nTimePoints x nChannels
         spike.templatesposition = tempcoords;
         spike.templatesamplitude = tempAmps;
         spike.templateswaveform = templates_maxwaveform;
-        spike.templateswaveformfeature = templates_maxwaveform_feature;
+        spike.templateswaveformfeature = templates_waveform_feature;
         
         spike.chanmap = chmap+1;
         spike.channelposition = coords;
@@ -181,7 +181,7 @@ switch (spike.from)
         if exist(binpath,'file') && getclufeature
             mpbinfile = memmapfile(binpath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
             [cluwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mpbinfile,...
-                double(ss),spike.cluster,spike.clusterid,spike.template,chmap(templates_maxwaveform_chidx),spike.fs);
+                double(ss),spike.cluster,spike.clusterid,spike.chanmap,spike.channelposition,spike.fs);
             spike.clusterwaveform = cluwaveform;
             spike.clusterwaveformfeature = cluwaveformfeature;
         end
@@ -189,7 +189,7 @@ end
 spike.qcversion='Phy';
 spike.qc = [];
 %% Merge to Dataset
-fieldtomerge = ['spike_',spike.from];
+fieldtomerge = ['spike_',spike.sort_from];
 ds = split(spike.dataset_path,', ');
 if length(ds)>1
     % result is from concat binary file, need to split it for each dataset

@@ -1,6 +1,9 @@
-function [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_maxwaveform_feature] = templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,fs)
+function [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_waveform_feature] = templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,fs)
 %TEMPLATEFEATURE Summary of this function goes here
 %   Detailed explanation goes here
+
+% percentage of max amplitude to threshold spatial spread
+spreadampthr = 0.15;
 
 tempsUnW = zeros(size(temps));
 for t = 1:size(temps,1)
@@ -13,7 +16,7 @@ tempChanAmps = squeeze(max(tempsUnW,[],2))-squeeze(min(tempsUnW,[],2));
 % The template amplitude is the amplitude of its largest channel
 [tempAmpsUnscaled,maxch] = max(tempChanAmps,[],2);
 
-% template center of mass from masked weighted channel positions
+% template center of mass from masked weighted channel positions as soma position
 tempcoords = zeros(size(temps,1),size(coords,2));
 for t = 1:size(temps,1)
     maxchpos = coords(maxch(t),:);
@@ -35,16 +38,16 @@ tids = unique(spikeTemplates);
 tempAmps(tids+1) = ta; % because ta only has entries for templates that had at least one spike
 tempAmps = tempAmps'; % for consistency, make first dimension template number
 
-% Get channel with largest amplitude, take that as the waveform
-[~,max_ch] = max(max(abs(temps),[],2),[],3);
-templates_maxwaveform = nan(size(temps,1),size(temps,2));
-templates_maxwaveform_feature = struct([]);
-for t = 1:size(temps,1)
-    templates_maxwaveform(t,:) = temps(t,:,max_ch(t));
-    templates_maxwaveform_feature = [templates_maxwaveform_feature;NeuroAnalysis.Base.spikefeature(templates_maxwaveform(t,:),fs)];
-end
 
-templates_maxwaveform_chidx = max_ch;
+spreadchmask = tempChanAmps >= tempAmpsUnscaled*spreadampthr;
+templates_maxwaveform = zeros(size(temps,1),size(temps,2));
+templates_waveform_feature = cell(size(temps,1),1);
+for t = 1:size(temps,1)
+    templates_maxwaveform(t,:) = temps(t,:,maxch(t)); % waveform from largest amplitude
+    templates_waveform_feature{t} = NeuroAnalysis.Base.spikefeature2(squeeze(temps(t,:,:)),spreadchmask(t,:),maxch(t),coords,fs);
+end
+templates_waveform_feature = [templates_waveform_feature{:}];
+templates_maxwaveform_chidx = maxch;
 
 end
 
