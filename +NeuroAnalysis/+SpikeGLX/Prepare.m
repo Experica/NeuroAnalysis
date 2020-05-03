@@ -114,6 +114,7 @@ if ~isempty(dataset)
         ds=dss{:};
         if isfield(dataset,ds)
             meta = dataset.(ds).meta;
+            meta.from = ds;
             
             samefolderbin = strrep(dataset.(ds).metafile,'meta','bin');
             if(exist(samefolderbin,'file')==2)
