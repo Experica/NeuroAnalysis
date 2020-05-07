@@ -136,16 +136,23 @@ if ~isempty(dataset)
                 else
                     meta.probeversion = 0; % Phase3A probe
                 end
-                % No. of channels multiplexed into one ADC
                 switch (meta.probeversion)
                     case 2
-                    otherwise
-                        nchmx = 12; % Phase3A - 1.0 are all 12
-                end
-                nch = meta.acqApLfSy(1);
-                dmxgroup = cell(nchmx,1);
-                for g = 1:nchmx
-                    dmxgroup{g} = g + (0:nchmx:nch-nchmx);
+                    otherwise % Phase3A - 1.0
+                        % No. of channels multiplexed into one ADC
+                        nchmx = 12;
+                        % ADC1 {0,2,4,6,8,10,12,14,16,18,20,22}
+                        % ADC2 {1,3,5,7,9,11,13,15,17,19,21,23}
+                        % ADC3 {24,26,28,30,32,34,36,38,40,42,44,46}
+                        % ADC4 {25,27,29,31,33,35,37,39,41,43,45,47}
+                        % ...
+                        nch = meta.acqApLfSy(1);
+                        dmxgroup = cell(nchmx,1);
+                        hc = 1:2*nchmx:nch;
+                        dmxgroup{1} = [hc,hc+1];
+                        for g = 2:nchmx
+                            dmxgroup{g} = dmxgroup{g-1}+2;
+                        end
                 end
                 meta.nchmx = nchmx;
                 meta.dmxgroup = dmxgroup;

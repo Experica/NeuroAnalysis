@@ -77,8 +77,8 @@ if iscell(dataset)
     cdataset.ap.meta = datasets{1}.ap.meta;
     cdataset.ap.meta.fileName=concatfilepath;
     cdataset.ap.meta.nFileSamp=sum(binfilensample);
-    % demuxed car already done in concat file, so we disable car in kilosort
-    cdataset.car = 0;
+    % demuxed CAR could help to remove very fast transient noise, and then normal CAR in kilosort could further reduce other noise.
+    cdataset.car = 1;
     % time range [t(i), t(i+1)) for each file in the concat file
     cdataset.binfilerange = NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),cdataset.ap.meta.fs,cdataset.secondperunit);
     clear datasets chunkdata % reclaim memory before KiloSort
