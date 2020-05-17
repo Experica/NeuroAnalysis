@@ -48,11 +48,15 @@ if ~isempty(ex.Param)
     ex.Param = tryparseparamstruct(ex.Param);
 end
 %% Init timing params, all times will be mapped to the reference timeline of DAQ Device where data are collected and time stampped
-t0=54;
+% estimated `Command` t0 on reference timeline, used to predict sync time if digital sync corrupted
+t0=55;
+% estimated latency between display and sync time, used to predict measure time if digital measure corrupted
 displaylatency = ex.Config.Display.(ex.Display_ID).Latency;
+% estimated timer drift between `Command` and reference timeline, used to predict sync time if digital sync corrupted
 timerdriftspeed = ex.TimerDriftSpeed;
 displayfallriselagdiff = ex.Config.Display.(ex.Display_ID).FallRiseLagDiff;
-syncsearchradius = 20; % max jitter(ms) around perdicted sync time
+% max jitter(ms) around perdicted sync time
+syncsearchradius = 20;
 %% Parse digital data
 if ~isempty(dataset)
     if ~isfield(dataset,'digital')
@@ -101,10 +105,11 @@ end
             end
         end
     end
+% fill missing event in event1 from corresponding existing event in event2
     function mergeevents(event1,event2,e2offset)
         for t=1:nct
-            e1s=ex.CondTest.(event1){i};
-            e2s = ex.CondTest.(event2){i}+e2offset;
+            e1s=ex.CondTest.(event1){t};
+            e2s = ex.CondTest.(event2){t}+e2offset;
             merged=e1s;
             if isempty(merged)
                 if ~isempty(e2s)
@@ -122,7 +127,7 @@ end
             if ~isempty(merged) && all(arrayfun(@(x)isnan(x),merged))
                 merged=[];
             end
-            ex.CondTest.(event1){i}=merged;
+            ex.CondTest.(event1){t}=merged;
         end
     end
     function [uets] = uniqueeventtime(ts,es)
@@ -171,6 +176,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         end
     end
     usyncevents = unique(synceventseq);
+    nsyncevents = length(synceventseq);
     % Check Sync Event Data
     iseventsync = false;
     iseventmeasure = false;
@@ -184,8 +190,8 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 eventsynctime = dataset.digital(eventsyncchidx).time;
                 eventsyncdata = dataset.digital(eventsyncchidx).data;
                 % clean noisy digital caused by logical high very close to threshold
-                if length(synceventseq)~=length(eventsyncdata)
-                    warning('    Clean Noisy Sync Signal.         SyncEvents/DigitalEvents:    %d/%d    ...',length(synceventseq), length(eventsyncdata));
+                if nsyncevents<length(eventsyncdata)
+                    warning('    Clean Noisy Sync Signal.         SyncEvents/DigitalEvents:    %d/%d    ...',nsyncevents, length(eventsyncdata));
                     if ex.PreICI ==0 && ex.SufICI==0
                         minlowdur = max(8,ex.CondDur-100);
                         minhighdur = minlowdur;
@@ -195,11 +201,11 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                     end
                     [eventsynctime,eventsyncdata] = cleannoisedigital(eventsynctime,eventsyncdata,minlowdur,minhighdur);
                 end
-                if length(synceventseq)==length(eventsyncdata) && all(diff(double(eventsyncdata)))
+                if nsyncevents==length(eventsyncdata) && all(diff(double(eventsyncdata)))
                     iseventsyncerror=false;
                 else
                     iseventsyncerror=true;
-                    warning('    Event Sync Error.        Events/Syncs: %d/%d,    No Flips: %d',length(synceventseq),length(eventsyncdata),find(diff(double(eventsyncdata))==0));
+                    warning('    Event Sync Error.        Events/Syncs: %d/%d,    No Flips: %d',nsyncevents,length(eventsyncdata),find(diff(double(eventsyncdata))==0));
                 end
                 ex.eventsyncintegrity=~iseventsyncerror;
             end
@@ -214,11 +220,26 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                     fallindex = eventmeasuredata==0;
                     eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfallriselagdiff;
                 end
-                if length(synceventseq)==length(eventmeasuredata) && all(diff(double(eventmeasuredata)))
+                % Given measuredata follow flip rule, and 1 event missing, there is
+                % no way missed in middle of data, otherwise the flip rule
+                % would dictate 2 missing events.
+                if all(diff(double(eventmeasuredata))) && nsyncevents==length(eventmeasuredata)+1
+                    vend = mod(nsyncevents,2);
+                    if eventmeasuredata(1)==1 && eventmeasuredata(end) == (1-vend)
+                        warning('    One Event Measure Missed, Add at the End of Measure.');
+                        eventmeasuredata(end+1) = vend;
+                        eventmeasuretime(end+1) = eventmeasuretime(end)+ex.CondDur;
+                    elseif eventmeasuredata(1)==0 && eventmeasuredata(end) == vend
+                        warning('    One Event Measure Missed, Add at the Begin of Measure.');
+                        eventmeasuredata = [1,eventmeasuredata];
+                        eventmeasuretime = [eventmeasuretime(1)-ex.CondDur,eventmeasuretime];
+                    end
+                end
+                if nsyncevents==length(eventmeasuredata) && all(diff(double(eventmeasuredata)))
                     iseventmeasureerror=false;
                 else
                     iseventmeasureerror=true;
-                    warning('    Event Measure Error.        Events/Measures: %d/%d,    No Flips: %d',length(synceventseq),length(eventmeasuredata),find(diff(double(eventmeasuredata))==0));
+                    warning('    Event Measure Error.        Events/Measures: %d/%d,    No Flips: %d',nsyncevents,length(eventmeasuredata),find(diff(double(eventmeasuredata))==0));
                 end
                 ex.eventmeasureintegrity=~iseventmeasureerror;
             end
@@ -227,7 +248,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     % Parse Sync Event `Sync` Time
     if iseventsync
         if ~iseventsyncerror
-            for i=1:length(synceventseq)
+            for i=1:nsyncevents
                 se = ['Sync_',synceventseq{i}];
                 if ~isfield(ex.CondTest,se)
                     ex.CondTest.(se)=cell(1,nct);
@@ -242,7 +263,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     % Parse Sync Event `Measure` Time
     if iseventmeasure
         if ~iseventmeasureerror
-            for i=1:length(synceventseq)
+            for i=1:nsyncevents
                 me = ['Measure_',synceventseq{i}];
                 if ~isfield(ex.CondTest,me)
                     ex.CondTest.(me)=cell(1,nct);
@@ -285,8 +306,6 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         ex.EvalTimerDriftSpeed = e(2);
         % the fixed CommandToSyncDelay sould be very short, so the remaining would be the DAQ reference time of Command t0
         ex.t0 = ex.CommandToSyncDelay;
-        % updated t0 and TimerDriftSpeed make perdicted `Sync` more accurate, so we reduce radius to get more accurate search
-        syncsearchradius = 10;
     end
     
     % remap Sync Event `Command` Time based on updated timing params
