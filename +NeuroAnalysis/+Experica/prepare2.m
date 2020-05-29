@@ -220,19 +220,31 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                     fallindex = eventmeasuredata==0;
                     eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfallriselagdiff;
                 end
-                % Given measuredata follow flip rule, and 1 event missing, there is
-                % no way missed in middle of data, otherwise the flip rule
-                % would dictate 2 missing events.
-                if all(diff(double(eventmeasuredata))) && nsyncevents==length(eventmeasuredata)+1
+                % Given measuredata follow flip rule, and 1 event missing or adding, there is
+                % no way happened in middle of data, otherwise the flip rule
+                % would dictate 2 missing/adding events.
+                if all(diff(double(eventmeasuredata)))
                     vend = mod(nsyncevents,2);
-                    if eventmeasuredata(1)==1 && eventmeasuredata(end) == (1-vend)
-                        warning('    One Event Measure Missed, Add at the End of Measure.');
-                        eventmeasuredata(end+1) = vend;
-                        eventmeasuretime(end+1) = eventmeasuretime(end)+ex.CondDur;
-                    elseif eventmeasuredata(1)==0 && eventmeasuredata(end) == vend
-                        warning('    One Event Measure Missed, Add at the Begin of Measure.');
-                        eventmeasuredata = [1,eventmeasuredata];
-                        eventmeasuretime = [eventmeasuretime(1)-ex.CondDur,eventmeasuretime];
+                    if nsyncevents==length(eventmeasuredata)+1
+                        if eventmeasuredata(1)==1 && eventmeasuredata(end) == (1-vend)
+                            warning('    One Event Measure Missed, Add at the End of Measure.');
+                            eventmeasuredata(end+1) = vend;
+                            eventmeasuretime(end+1) = eventmeasuretime(end)+ex.CondDur;
+                        elseif eventmeasuredata(1)==0 && eventmeasuredata(end) == vend
+                            warning('    One Event Measure Missed, Add at the Begin of Measure.');
+                            eventmeasuredata = [1,eventmeasuredata];
+                            eventmeasuretime = [eventmeasuretime(1)-ex.CondDur,eventmeasuretime];
+                        end
+                    elseif nsyncevents==length(eventmeasuredata)-1
+                        if eventmeasuredata(1)==1 && eventmeasuredata(end) == (1-vend)
+                            warning('    One Event Measure Added, Delete at the End of Measure.');
+                            eventmeasuredata(end) = [];
+                            eventmeasuretime(end) = [];
+                        elseif eventmeasuredata(1)==0 && eventmeasuredata(end) == vend
+                            warning('    One Event Measure Added, Delete at the Begin of Measure.');
+                            eventmeasuredata(1) = [];
+                            eventmeasuretime(1) = [];
+                        end
                     end
                 end
                 if nsyncevents==length(eventmeasuredata) && all(diff(double(eventmeasuredata)))
@@ -316,11 +328,11 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         end
     end
     
-    % rerecover Sync Event `Sync` Time based on updated `Command` Time
+    % re-recover Sync Event `Sync` Time based on updated `Command` Time
     if isfield(ex,'t0') && iseventsync && iseventsyncerror
         searchrecover('Command_','Sync_',eventsynctime,0,syncsearchradius);
     end
-    % rerecover Sync Event `Measure` Time based on updated DisplayLatency
+    % re-recover Sync Event `Measure` Time based on updated DisplayLatency
     if isfield(ex,'EvalDisplayLatency') && iseventmeasure && iseventmeasureerror
         searchrecover('Sync_','Measure_',eventmeasuretime,displaylatency,ex.Config.MaxDisplayLatencyError);
     end

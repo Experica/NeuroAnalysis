@@ -21,7 +21,7 @@ for i=1:length(cluid)
     sidx = sort(cluidx(randperm(length(cluidx),cnw)));
     sr = arrayfun(@(i)spiketime(i)+spikerange,sidx,'uniformoutput',false);
     cluwaveforms = mpbinfile.Data.ap(chmap,[sr{:}]);
-    cluwaveforms = mean(reshape(cluwaveforms,nch,ns,[]),3)'; % nsample x nch
+    cluwaveforms = mean(reshape(cluwaveforms,nch,ns,[]),3,'double')'; % nsample x nch
     
     amp = max(cluwaveforms,[],1)-min(cluwaveforms,[],1);
     [maxamp,maxch] = max(amp);

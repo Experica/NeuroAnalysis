@@ -43,8 +43,8 @@ spreadchmask = tempChanAmps >= tempAmpsUnscaled*spreadampthr;
 templates_maxwaveform = zeros(size(temps,1),size(temps,2));
 templates_waveform_feature = cell(size(temps,1),1);
 for t = 1:size(temps,1)
-    templates_maxwaveform(t,:) = temps(t,:,maxch(t)); % waveform from largest amplitude
-    templates_waveform_feature{t} = NeuroAnalysis.Base.spikefeature2(squeeze(temps(t,:,:)),spreadchmask(t,:),maxch(t),coords,fs);
+    templates_maxwaveform(t,:) = tempsUnW(t,:,maxch(t)); % waveform from largest amplitude
+    templates_waveform_feature{t} = NeuroAnalysis.Base.spikefeature2(squeeze(tempsUnW(t,:,:)),spreadchmask(t,:),maxch(t),coords,fs);
 end
 templates_waveform_feature = [templates_waveform_feature{:}];
 templates_maxwaveform_chidx = maxch;
