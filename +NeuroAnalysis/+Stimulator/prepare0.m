@@ -314,7 +314,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         chn = size(dataset.spike2Data.chanName,2);
                         digData = dataset.spike2Data.fs1208';  % Digital TTL
                         anaData = dataset.spike2Data.photodio'; % Photodiode
-                        
+
                         if chn>0
                             ex.spike2.fs=fs;
                             [di,dv]=parsedigitalinanalog(digData,nsample,0.8,1.5);
@@ -323,16 +323,20 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                             ex.spike2.digital(1).value=dv;
 
                             if strcmpi(ex.DisplayType,'crt')
-                                [di,dv,pd]=parsecrtdigitalinanalog(anaData,0.05,0.25,0.15);
+                                [di,dv,pd]=parsecrtdigitalinanalog(anaData,0.05,0.28,0.18);
+%                                 [di,dv,pd]=parsecrtdigitalinanalog(anaData,0.05,0.30,0.15);
                                 % correct CRT scan, because upperleft corner photodiode only detects the first scan line.
                                 di = di + round(pd*ex.EnvParam.y_pos/ex.EnvParam.ScreenResolution(2));
                             else
                                 [di,dv]=parsedigitalinanalog(anaData,nsample,0.25,0.15);
                             end
                             ex.spike2.digital(2).channel=2;    % Photodiode
+                            
                             ex.spike2.digital(2).time=di;
                             ex.spike2.digital(2).value=dv;
-%                             ex.spike2.digital(2).time=[di(1),di(1)+215, di(2:end)];
+
+                            % if the first peak is missed
+%                             ex.spike2.digital(2).time=[di(1),di(1)+215, di(2:end)];  
 %                             ex.spike2.digital(2).value=[dv(1),dv(1),dv(2:end)];
 
                         end
@@ -431,6 +435,12 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
     function [ex] = parsescanbox(ex)
         
         sbx = dataset.sbx.info;
+        if sbx.frame(1) == 0
+            sbx.frame = sbx.frame(2:end);
+        end
+        if  sbx.line(1) == 0
+            sbx.line=sbx.line(2:end);
+        end
         sbxFrameId = sbx.frame;
         sbxLineId = sbx.line;
         sbxLineNum = sbx.sz(1);
