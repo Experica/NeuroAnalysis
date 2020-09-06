@@ -35,7 +35,7 @@ if(exist(analyzerfilepath,'file')==2)
     dataset.secondperunit = 1; % in sec
 end
 spike2File = dir(fullfile(filedir,[filename, '*.smr']));
-spike2MatFile = dir(fullfile(filedir,[filename, '*_hartley.mat']));
+spike2MatFile = dir(fullfile(filedir,[filename, '*hartley*.mat']));
 isHartleydata = false;
 dataset.eventSource = '';
 if (~isempty(spike2File)) || (~isempty(spike2MatFile))
@@ -65,7 +65,8 @@ if isHartleydata
     else
         disp(['Loading Spike2 .mat Files:    ',spike2MatFile.name,'    ...']);
         aa=load(fullfile(spike2MatFile.folder, spike2MatFile.name), '-mat');
-%         chanName=fieldnames(aa);
+        % The following commented code is for spkie2 data saved as .mat file, not .smr file
+%         chanName=fieldnames(aa); 
 %         spike2Data = [];
 %         for ii = 1: length(chanName)
 %             field = aa.(chanName{ii}).title;
@@ -94,7 +95,7 @@ unit = filename(6:8);
 expt = filename(10:12);
 
 filenameNew = [ani, '_', unit, '_', expt];
-dirinfo = dir(fullfile(filedir, [filenameNew,'_parse.scan']));
+dirinfo = dir(fullfile(filedir, [filenameNew,'*_parse.scan']));
 
 % dirinfo = dir(fullfile(filedir,'\*\*\', [filenameNew,'*_split.mat']));
 
