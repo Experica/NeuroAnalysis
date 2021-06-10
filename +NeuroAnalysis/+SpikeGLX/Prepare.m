@@ -70,7 +70,7 @@ if(exist(analyzerfilepath,'file')==2)
     isstimulatordata = true;
 end
 
-metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.meta'])),'uniformoutput',0); % Find meta file from the name of analyzer file
+metafilenames=arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.meta'])),'uniformoutput',0);
 if ~isempty(metafilenames)
     isspikeglxdata = true;
 else
@@ -126,8 +126,7 @@ if ~isempty(dataset)
             
             if strcmp(meta.typeThis,'imec')
                 meta.fs = meta.imSampRate;
-                % factor for converting 16-bit file data to voltage
-                meta.fi2v = meta.imAiRangeMax / 512;
+                meta.fi2v = meta.imAiRangeMax / 512; % factor for converting 16-bit file data to voltage
                 meta.snsApLfSy = int64(meta.snsApLfSy);
                 meta.acqApLfSy = int64(meta.acqApLfSy);
                 % imec probe version
@@ -136,6 +135,7 @@ if ~isempty(dataset)
                 else
                     meta.probeversion = 0; % Phase3A probe
                 end
+                % demux, spacing and ref channels
                 switch (meta.probeversion)
                     case 2
                     otherwise % Phase3A - 1.0
@@ -153,9 +153,20 @@ if ~isempty(dataset)
                         for g = 2:nchmx
                             dmxgroup{g} = dmxgroup{g-1}+2;
                         end
+                        % probe channel spacing[x,y,z] in um
+                        spacing = [32,20,0];
+                        % 1-based index of reference IDs for probe option
+                        switch  meta.imProbeOpt
+                            case 4
+                                refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
+                            otherwise
+                                refch = int64([36, 75, 112, 151, 188, 227, 264, 303, 340, 379]+1);
+                        end
                 end
                 meta.nchmx = nchmx;
                 meta.dmxgroup = dmxgroup;
+                meta.probespacing = spacing;
+                meta.refch = refch;
                 % imec readout table
                 C = textscan(meta.imroTbl, '(%d %d %d %d %d', ...
                     'EndOfLine', ')', 'HeaderLines', 1 );
@@ -164,12 +175,6 @@ if ~isempty(dataset)
                 meta.rorefch = int64(cell2mat(C(3)));
                 meta.roapgain = cell2mat(C(4));
                 meta.rolfgain = cell2mat(C(5));
-                % 1-based index of reference IDs for probe option
-                if meta.imProbeOpt<4
-                    meta.refch = int64([36, 75, 112, 151, 188, 227, 264, 303, 340, 379]+1);
-                else
-                    meta.refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
-                end
                 % bad channels
                 cpn = ['SN_',num2str(meta.imProbeSN)];
                 if isstruct(probeinfo) && isfield(probeinfo,cpn)
@@ -195,10 +200,9 @@ if ~isempty(dataset)
                     excludechans = union(excludechans,meta.badch);
                 end
                 meta.excludechans = excludechans;
-                % probe channel spacing[x,y,z] in um
-                meta.probespacing = [32,20,0];
+                % imec shank map
                 if isfield(meta,'snsShankMap')
-                    header = int64(str2num(regexp(meta.snsShankMap,'([1-9,]*)','match','once')));
+                    header = int64(str2num(regexp(meta.snsShankMap,'([0-9,]*)','match','once')));
                     meta.nshank = header(1);
                     meta.ncol= header(2);
                     meta.nrow = header(3);

@@ -2,7 +2,7 @@ function [ dataset ] = KiloSort( dataset )
 %KILOSORT Summary of this function goes here
 %   Detailed explanation goes here
 
-%% Concat binary files in time order to get consistent cluster id
+%% Concat binary files in time order into one binary file, then kilosort on it to get consistent cluster id across multiple binary files
 if iscell(dataset)
     datasets = cellfun(@load,dataset,'uniformoutput',0);
     binfiles = cellfun(@(x)x.ap.meta.fileName,datasets,'uniformoutput',0);
@@ -40,6 +40,11 @@ if iscell(dataset)
     % demux channel groups
     nchsaved = datasets{1}.ap.meta.nSavedChans;
     dmxgroup = datasets{1}.ap.meta.dmxgroup;
+    if datasets{1}.ap.meta.probeversion>0
+        rmdc = false;
+    else
+        rmdc = true;
+    end
     for g = 1:length(dmxgroup)
         dmxgroup{g} = setdiff(dmxgroup{g},datasets{1}.ap.meta.excludechans);
     end
@@ -62,7 +67,7 @@ if iscell(dataset)
                 end
                 chunkdata = fread(fid,[nchsaved,readsample],'*int16');
                 fprintf('        Demuxed CAR on chunk size:    %d    ...\n',readsample);
-                chunkdata = NeuroAnalysis.Base.dmxcar(chunkdata,dmxgroup);
+                chunkdata = NeuroAnalysis.Base.dmxcar(chunkdata,dmxgroup,rmdc);
                 fwrite(cfid,chunkdata,'int16');
                 remainingsample = remainingsample - readsample;
             end
@@ -71,7 +76,7 @@ if iscell(dataset)
         fclose(cfid);
         disp('Concat Binary Files        Done.');
     end
-    % kilosort on concat binary file
+    % prepare a new dataset with concat binary file
     cdataset.secondperunit = datasets{1}.secondperunit;
     cdataset.filepath = dataset;
     cdataset.ap.meta = datasets{1}.ap.meta;
@@ -84,18 +89,31 @@ if iscell(dataset)
     clear datasets chunkdata % reclaim memory before KiloSort
     cdataset = NeuroAnalysis.SpikeGLX.KiloSort(cdataset);
     % split sorting result into each original dataset
-    disp('Split Sorting Result Into Dataset        ...');
-    spike = cdataset.spike_kilosort;
-    for i=1:length(dataset)
-        odataset = matfile(dataset{i},'Writable',true);
-        odataset.spike_kilosort = NeuroAnalysis.Base.splitspike(spike,cdataset.binfilerange(i:i+1));
+    if isfield(cdataset,'spike_kilosort')
+        disp('Split Sorting Result Into Dataset        ...');
+        for i=1:length(dataset)
+            odataset = matfile(dataset{i},'Writable',true);
+            odataset.spike_kilosort = NeuroAnalysis.Base.splitspike(cdataset.spike_kilosort,cdataset.binfilerange(i:i+1));
+        end
+        disp('Split Sorting Result Into Dataset        Done.');
     end
-    disp('Split Sorting Result Into Dataset        Done.');
     return;
 end
 
-%% KiloSort2 ops
-disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    ...']);
+%% Choose Kilosort Version
+kilosortversion = '2';
+
+rmpath(genpath('C:\Users\fff00\Kilosort-2.0'));
+rmpath(genpath('C:\Users\fff00\Kilosort'));
+switch kilosortversion
+    case '2'
+        addpath(genpath('C:\Users\fff00\Kilosort-2.0'));
+    case '3'
+        addpath(genpath('C:\Users\fff00\Kilosort'));
+end
+
+%% KiloSort ops
+disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.ap.meta.fileName,'    ...']);
 
 % the binary file
 ops.fbinary = dataset.ap.meta.fileName;
@@ -129,15 +147,6 @@ ops.fshigh = 300;
 % minimum firing rate on a "good" channel (0 to skip)
 ops.minfr_goodchannels = 1/300;
 
-% threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-ops.Th = [10 4];
-
-% how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-ops.lam = 10;
-
-% splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
-ops.AUCsplit = 0.9;
-
 % minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
 ops.minFR = 1/300; % one spike every 5min
 
@@ -150,8 +159,17 @@ ops.sigmaMask = 30;
 % threshold crossings for pre-clustering (in PCA projection space)
 ops.ThPre = 8;
 
+% threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
+ops.Th = [10 4];
+
+% how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
+ops.lam = 10;
+
+% splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
+ops.AUCsplit = 0.9;
+
 % proc file on a fast SSD
-ops.fproc = fullfile(binrootdir,'kilosort_temp_wh.dat');
+ops.fproc = fullfile(binrootdir,['kilosort',kilosortversion,'_temp_wh.dat']);
 
 % time range to sort
 ops.trange = [0 Inf];
@@ -160,18 +178,36 @@ ops.trange = [0 Inf];
 ops.NchanTOT = double(dataset.ap.meta.nSavedChans);
 
 % common average referencing by median
-car = 1;
+ops.CAR = 1;
 if isfield(dataset,'car')
-    car = dataset.car;
+    ops.CAR = dataset.car;
 end
-ops.CAR = car;
+
+switch kilosortversion
+    case '3'
+        % spatial smoothness constant for registration
+        ops.sig = 20;
+        % blocks for registration. 0 turns it off, 1 does rigid registration. Replaces "datashift" option.
+        ops.nblocks = 5;
+        
+        ops.Th = [10 4];
+        ops.lam = 10;
+        ops.AUCsplit = 0.9;
+        
+        %         % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
+        %         ops.Th = [9 9];
+        %         % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
+        %         ops.lam = 20;
+        %         % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
+        %         ops.AUCsplit = 0.8;
+end
 
 %% danger, changing these settings can lead to fatal errors
 
 % options for determining PCs
-ops.spkTh           = -6;  % spike threshold in standard deviations (-6)
-ops.reorder         = 1;   % whether to reorder batches for drift correction.
-ops.nskip           = 25;  % how many batches to skip for determining spike PCs
+ops.spkTh               = -6;  % spike threshold in standard deviations (-6)
+ops.reorder             = 1;   % whether to reorder batches for drift correction.
+ops.nskip               = 25;  % how many batches to skip for determining spike PCs
 
 ops.GPU                 = 1; % has to be 1, no CPU version yet, sorry
 ops.nfilt_factor        = 4; % max number of clusters per good channel (even temporary ones)
@@ -182,40 +218,46 @@ ops.nSkipCov            = 25; % compute whitening matrix from every N-th batch
 ops.scaleproc           = 200; % int16 scaling of whitened data
 ops.nPCs                = 3; % how many PCs to project the spikes into
 ops.useRAM              = 0; % not yet available
-%% this block runs all the steps of the algorithm
 
-% preprocess data to create temp_wh.dat
-rez = preprocessDataSub(ops);
+%% run all the steps of kilosort
+switch kilosortversion
+    case '2'
+        % preprocess data to create temp_wh.dat
+        rez = preprocessDataSub(ops);
+        % time-reordering as a function of drift
+        rez = clusterSingleBatches(rez);
+        % main tracking and template matching algorithm
+        rez = learnAndSolve8b(rez);
+        % final merges
+        rez = find_merges(rez, 1);
+        % final splits by SVD
+        rez = splitAllClusters(rez, 1);
+        % final splits by amplitudes
+        rez = splitAllClusters(rez, 0);
+        % decide on cutoff
+        rez = set_cutoff(rez);
+    case '3'
+        rez                = preprocessDataSub(ops);
+        rez                = datashift2(rez, 1);
+        [rez, st3, tF]     = extract_spikes(rez);
+        rez                = template_learning(rez, tF, st3);
+        [rez, st3, tF]     = trackAndSort(rez);
+        rez                = final_clustering(rez, tF, st3);
+        rez                = find_merges(rez, 1);
+end
 
-% time-reordering as a function of drift
-rez = clusterSingleBatches(rez);
+fprintf('Found %d / %d good units \n', sum(rez.good>0),length(rez.good));
+disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
 
-% main tracking and template matching algorithm
-rez = learnAndSolve8b(rez);
-
-% final merges
-rez = find_merges(rez, 1);
-
-% final splits by SVD
-rez = splitAllClusters(rez, 1);
-
-% final splits by amplitudes
-rez = splitAllClusters(rez, 0);
-
-% decide on cutoff
-rez = set_cutoff(rez);
-
-fprintf('Found %d / %d good units \n', sum(rez.good>0),length(rez.good))
-disp(['KiloSort2 Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
 %% Get sorted spikes
 disp('Extract Spike Sorting Result    ...');
-spike = extractrez(rez,dataset.secondperunit,55);
+spike = [];%extractrez(rez,dataset.secondperunit,55);
 disp('Extract Spike Sorting Result    done.');
 if ~isempty(spike)
     dataset.spike_kilosort=spike;
 end
 
-phydir = fullfile(binrootdir,[binname,'_Phy']);
+phydir = fullfile(binrootdir,[binname,'_Kilosort',kilosortversion,'_Phy']);
 if exist(phydir,'dir')
     rmdir(phydir,'s');
 end
@@ -223,13 +265,15 @@ if ~exist(phydir,'dir')
     mkdir(phydir);
 end
 disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    ...']);
-rez2phy(rez,phydir,dataset);
+switch kilosortversion
+    case '2'
+        rez2phy(rez,phydir,dataset);
+    case '3'
+        rez2phy2(rez,phydir,dataset);
+end
 disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
 
-if exist(ops.fproc, 'file')
-    delete(ops.fproc);
-end
-%% only works for all channels for now
+%%
     function [chmap] = neuropixelschmap(meta)
         if meta.probeversion <= 1
             chmap.name = 'Neuropixels Phase3A/3B/1.0';
@@ -238,11 +282,18 @@ end
             chmap.chanMap0ind = double(meta.robank*meta.acqApLfSy(1) + meta.roch);
             chmap.chanMap = chmap.chanMap0ind+1;
             dx = meta.probespacing(1);dy=meta.probespacing(2);
-            chmap.xcoords = repmat([dx/2; dx/2+dx; 0; dx],meta.nrow/2,1);
-            chmap.ycoords = repelem(double(0:dy:((meta.nrow-1)*dy))',meta.ncol);
+            cols = double(meta.savedcols);rows = double(meta.savedrows);
+            
+            if meta.probeversion == 0 % Phase3A checkboard
+                chmap.xcoords = arrayfun(@(r,c)(dx/2 + (c-1)*dx) - abs(mod(r,2)-1)*dx/2,rows,cols);
+                chmap.ycoords = (rows-1)*dy;
+            else % Phase3B/1.0 regular
+                chmap.xcoords = (cols-1)*dx;
+                chmap.ycoords = (rows-1)*dy;
+            end
         end
     end
-%%
+%% for kilosort 2
     function rez2phy(rez, savePath,dataset)
         % pull out results from kilosort's rez to either return to workspace or to
         % save in the appropriate format for the phy GUI to run on. If you provide
@@ -407,14 +458,219 @@ end
                 if isfield(dataset,'binfilerange')
                     writeNPY(dataset.binfilerange, fullfile(savePath, 'binfilerange.npy'));
                 end
+                fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder in the sam folder of binaries
+                fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
+                fprintf(fid,'nsample = %i\n',dataset.ap.meta.nFileSamp);
+                fprintf(fid,'dtype = ''int16''\n');
+                fprintf(fid,'offset = 0\n');
+                fprintf(fid,'sample_rate = %.32f\n',rez.ops.fs);
+                fprintf(fid,['sort_from = ''Kilosort_v',kilosortversion,'''\n']);
+                if isfield(rez.ops,'fshigh')
+                    hp='True';
+                else
+                    hp='False';
+                end
+                fprintf(fid,['hp_filtered = ', hp]);
+                fclose(fid);
+            end
+        end
+    end
+%% for kilosort 3
+    function rez2phy2(rez, savePath,dataset)
+        % pull out results from kilosort's rez to either return to workspace or to
+        % save in the appropriate format for the phy GUI to run on. If you provide
+        % a savePath it should be a folder, and you will need to have npy-matlab
+        % available (https://github.com/kwikteam/npy-matlab)
+        %
+        % This is a modified version of the `rezToPhy2` function in Kilosort
+        
+        [~, Nfilt, Nrank] = size(rez.W);
+        % for Phy, we need to pad the spikes with zeros so the spikes are aligned to the center of the window
+        rez.Wphy = cat(1, zeros(1+rez.ops.nt0min, Nfilt, Nrank), rez.W);
+        
+        rez.W = gather(single(rez.Wphy));
+        rez.U = gather(single(rez.U));
+        rez.mu = gather(single(rez.mu));
+        
+        if size(rez.st3,2)>4
+            rez.st3 = rez.st3(:,1:4);
+        end
+        
+        [~, isort]   = sort(rez.st3(:,1), 'ascend');
+        rez.st3      = rez.st3(isort, :);
+        if ~isempty(rez.cProj)
+            rez.cProj    = rez.cProj(isort, :);
+            rez.cProjPC  = rez.cProjPC(isort, :, :);
+        end
+        
+        fs = dir(fullfile(savePath, '*.npy'));
+        for i = 1:length(fs)
+            delete(fullfile(savePath, fs(i).name));
+        end
+        if exist(fullfile(savePath, '.phy'), 'dir')
+            rmdir(fullfile(savePath, '.phy'), 's');
+        end
+        
+        % spikeTimes will be in samples, not seconds
+        spikeTimes = uint64(rez.st3(:,1));
+        % account for ops.trange(1) to accomodate real time
+        spikeTimes = spikeTimes - rez.ops.trange(1)*rez.ops.fs;
+        spikeTemplates = uint32(rez.st3(:,2));
+        if size(rez.st3,2)>4
+            spikeClusters = uint32(1+rez.st3(:,5));
+        end
+        amplitudes = rez.st3(:,3);
+        
+        Nchan = rez.ops.Nchan;
+        xcoords     = rez.xcoords(:);
+        ycoords     = rez.ycoords(:);
+        chanMap     = rez.ops.chanMap(:);
+        chanMap0ind = chanMap - 1;
+        U = rez.U;
+        W = rez.W;
+        nt0 = size(W,1);
+        Nfilt = size(W,2);
+        
+        templates = zeros(Nchan, nt0, Nfilt, 'single');
+        for iNN = 1:Nfilt
+            templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))';
+        end
+        templates = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels
+        templatesInds = repmat([0:size(templates,3)-1], size(templates,1), 1); % we include all channels so this is trivial
+        
+        templateFeatures = rez.cProj;
+        templateFeatureInds = uint32(rez.iNeigh);
+        pcFeatures = rez.cProjPC;
+        pcFeatureInds = uint32(rez.iNeighPC);
+        
+        %         whiteningMatrix = rez.Wrot/rez.ops.scaleproc;
+        whiteningMatrix = eye(size(rez.Wrot)) / rez.ops.scaleproc;
+        whiteningMatrixInv = whiteningMatrix^-1;
+        
+        % unwhiten all the templates
+        tempsUnW = zeros(size(templates));
+        for t = 1:size(templates,1)
+            tempsUnW(t,:,:) = squeeze(templates(t,:,:))*whiteningMatrixInv;
+        end
+        
+        % The amplitude on each channel is the positive peak minus the negative
+        tempChanAmps = squeeze(max(tempsUnW,[],2))-squeeze(min(tempsUnW,[],2));
+        
+        % The template amplitude is the amplitude of its largest channel
+        tempAmpsUnscaled = max(tempChanAmps,[],2);
+        
+        % assign all spikes the amplitude of their template multiplied by their
+        % scaling amplitudes
+        spikeAmps = tempAmpsUnscaled(spikeTemplates).*amplitudes;
+        
+        % take the average of all spike amps to get actual template amps (since
+        % tempScalingAmps are equal mean for all templates)
+        ta = clusterAverage(spikeTemplates, spikeAmps);
+        tids = unique(spikeTemplates);
+        tempAmps = zeros(numel(rez.mu),1);
+        tempAmps(tids) = ta; % because ta only has entries for templates that had at least one spike
+        gain = getOr(rez.ops, 'gain', 1);
+        tempAmps = gain*tempAmps'; % for consistency, make first dimension template number
+        
+        if ~isempty(savePath)
+            
+            writeNPY(spikeTimes, fullfile(savePath, 'spike_times.npy'));
+            writeNPY(uint32(spikeTemplates-1), fullfile(savePath, 'spike_templates.npy')); % -1 for zero indexing
+            if size(rez.st3,2)>4
+                writeNPY(uint32(spikeClusters-1), fullfile(savePath, 'spike_clusters.npy')); % -1 for zero indexing
+            else
+                writeNPY(uint32(spikeTemplates-1), fullfile(savePath, 'spike_clusters.npy')); % -1 for zero indexing
+            end
+            writeNPY(amplitudes, fullfile(savePath, 'amplitudes.npy'));
+            writeNPY(templates, fullfile(savePath, 'templates.npy'));
+            writeNPY(templatesInds, fullfile(savePath, 'templates_ind.npy'));
+            
+            writeNPY(int32(chanMap0ind), fullfile(savePath, 'channel_map.npy'));
+            writeNPY([xcoords ycoords], fullfile(savePath, 'channel_positions.npy'));
+            
+            if ~isempty(templateFeatures)
+                writeNPY(templateFeatures, fullfile(savePath, 'template_features.npy'));
+                writeNPY(templateFeatureInds'-1, fullfile(savePath, 'template_feature_ind.npy'));% -1 for zero indexing
+                writeNPY(pcFeatures, fullfile(savePath, 'pc_features.npy'));
+                writeNPY(pcFeatureInds'-1, fullfile(savePath, 'pc_feature_ind.npy'));% -1 for zero indexing
+            end
+            
+            writeNPY(whiteningMatrix, fullfile(savePath, 'whitening_mat.npy'));
+            writeNPY(whiteningMatrixInv, fullfile(savePath, 'whitening_mat_inv.npy'));
+            
+            if isfield(rez, 'simScore')
+                similarTemplates = rez.simScore;
+                writeNPY(similarTemplates, fullfile(savePath, 'similar_templates.npy'));
+            end
+            
+            % save a list of "good" clusters for Phy
+            fileID = fopen(fullfile(savePath, 'cluster_KSLabel.tsv'),'w');
+            fprintf(fileID, 'cluster_id%sKSLabel', char(9));
+            fprintf(fileID, char([13 10]));
+            
+            fileIDCP = fopen(fullfile(savePath, 'cluster_ContamPct.tsv'),'w');
+            fprintf(fileIDCP, 'cluster_id%sContamPct', char(9));
+            fprintf(fileIDCP, char([13 10]));
+            
+            fileIDA = fopen(fullfile(savePath, 'cluster_Amplitude.tsv'),'w');
+            fprintf(fileIDA, 'cluster_id%sAmplitude', char(9));
+            fprintf(fileIDA, char([13 10]));
+            
+            rez.est_contam_rate(isnan(rez.est_contam_rate)) = 1;
+            for j = 1:length(rez.good)
+                if rez.good(j)
+                    fprintf(fileID, '%d%sgood', j-1, char(9));
+                else
+                    fprintf(fileID, '%d%smua', j-1, char(9));
+                end
+                fprintf(fileID, char([13 10]));
+                
+                fprintf(fileIDCP, '%d%s%.1f', j-1, char(9), rez.est_contam_rate(j)*100);
+                fprintf(fileIDCP, char([13 10]));
+                
+                fprintf(fileIDA, '%d%s%.1f', j-1, char(9), tempAmps(j));
+                fprintf(fileIDA, char([13 10]));
+            end
+            fclose(fileID);
+            fclose(fileIDCP);
+            fclose(fileIDA);
+            
+            % Duplicate "KSLabel" as "group", a special metadata ID for Phy, so that
+            % filtering works as expected in the cluster view
+            KSLabelFilename = fullfile(savePath, 'cluster_KSLabel.tsv');
+            copyfile(KSLabelFilename, fullfile(savePath, 'cluster_group.tsv'));
+            
+            % make params file
+            if ~exist(fullfile(savePath,'params.py'),'file')
+                fid = fopen(fullfile(savePath,'params.py'), 'w');
+                
+                [~, fname, ext] = fileparts(rez.ops.fbinary);
+                
+                % save dataset path so that phy sorting result could be loaded back into dataset
+                if iscell(dataset.filepath)
+                    datasetpath = strjoin(dataset.filepath,', ');
+                else
+                    datasetpath = dataset.filepath;
+                end
+                fprintf(fid,['dataset_path = ''',replace(datasetpath,'\','\\'),'''\n']);
+                fprintf(fid,'secondperunit = %.32f\n',dataset.secondperunit);
+                if isfield(dataset,'binfilerange')
+                    writeNPY(dataset.binfilerange, fullfile(savePath, 'binfilerange.npy'));
+                end
+                %                 fprintf(fid,['dat_path = ''', strrep(rez.ops.fproc, '\', '/') '''\n']);
                 fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder usually in the sam folder of binaries
                 fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
                 fprintf(fid,'nsample = %i\n',dataset.ap.meta.nFileSamp);
                 fprintf(fid,'dtype = ''int16''\n');
                 fprintf(fid,'offset = 0\n');
                 fprintf(fid,'sample_rate = %.32f\n',rez.ops.fs);
-                fprintf(fid,'sort_from = ''kilosort''\n');
-                fprintf(fid,'hp_filtered = False');
+                fprintf(fid,['sort_from = ''Kilosort_v',kilosortversion,'''\n']);
+                if isfield(rez.ops,'fshigh')
+                    hp='True';
+                else
+                    hp='False';
+                end
+                fprintf(fid,['hp_filtered = ', hp]);
                 fclose(fid);
             end
         end
@@ -477,7 +733,7 @@ end
         spike.clusterid = unique(spike.cluster);
         spike.clustergood = rez.good;
         
-        spike.qcversion = 'Kilosort2';
+        spike.qcversion = ['Kilosort_v',kilosortversion];
         spike.qc = [];
     end
 end

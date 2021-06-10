@@ -3,17 +3,18 @@ function [ex] = prepare2(ex,dataset)
 %   Detailed explanation goes here
 
 import NeuroAnalysis.Base.* NeuroAnalysis.Experica.*
-%% Pad CondTest
+%% Pad CondTest table to the same height
 ctnames = fieldnames(ex.CondTest);
 nct = max(cellfun(@(x)length(ex.CondTest.(x)),ctnames));
 for i=1:length(ctnames)
-    if length(ex.CondTest.(ctnames{i})) < nct
+    h = length(ex.CondTest.(ctnames{i}));
+    if h < nct
+        warning('Pad %s length: %i -> %i',ctnames{i},h,nct);
         ex.CondTest.(ctnames{i}){nct} = [];
     end
 end
-%% Parse CondTest
+%% Parse CondTest, Convert from 0-based to 1-based, set empty = -1
 if isfield(ex.CondTest,'CondIndex')
-    % Convert to 1-base
     ex.CondTest.CondIndex(cellfun(@isempty,ex.CondTest.CondIndex)) = {-2};
     ex.CondTest.CondIndex =cellfun(@(x)int64(x+1), ex.CondTest.CondIndex);
 end
@@ -22,7 +23,6 @@ if isfield(ex.CondTest,'CondRepeat')
     ex.CondTest.CondRepeat = cellfun(@(x)int64(x), ex.CondTest.CondRepeat);
 end
 if isfield(ex.CondTest,'TrialIndex')
-    % Convert to 1-base
     ex.CondTest.TrialIndex(cellfun(@isempty,ex.CondTest.TrialIndex)) = {-2};
     ex.CondTest.TrialIndex =cellfun(@(x)int64(x+1), ex.CondTest.TrialIndex);
 end
@@ -31,7 +31,6 @@ if isfield(ex.CondTest,'TrialRepeat')
     ex.CondTest.TrialRepeat = cellfun(@(x)int64(x), ex.CondTest.TrialRepeat);
 end
 if isfield(ex.CondTest,'BlockIndex')
-    % Convert to 1-base
     ex.CondTest.BlockIndex(cellfun(@isempty,ex.CondTest.BlockIndex)) = {-2};
     ex.CondTest.BlockIndex =cellfun(@(x)int64(x+1), ex.CondTest.BlockIndex);
 end
@@ -39,43 +38,39 @@ if isfield(ex.CondTest,'BlockRepeat')
     ex.CondTest.BlockRepeat(cellfun(@isempty,ex.CondTest.BlockRepeat)) = {-1};
     ex.CondTest.BlockRepeat = cellfun(@(x)int64(x), ex.CondTest.BlockRepeat);
 end
-%% Try parse Environment Parameter
-if ~isempty(ex.EnvParam)
-    ex.EnvParam = tryparseparamstruct(ex.EnvParam);
-end
-%% Try parse Experiment Parameter
+%% Try Parse Experiment Parameter
 if ~isempty(ex.Param)
     ex.Param = tryparseparamstruct(ex.Param);
 end
-%% Init timing params, all times will be mapped to the reference timeline of DAQ Device where data are collected and time stampped
-% estimated `Command` t0 on reference timeline, used to predict sync time if digital sync corrupted
+%% Try Parse Environment Parameter
+if ~isempty(ex.EnvParam)
+    ex.EnvParam = tryparseparamstruct(ex.EnvParam);
+end
+%% Init timing correction params, all times will be mapped to the reference timeline of DAQ Device where data are collected and time stampped
+% estimated `Command` t0 on reference timeline, used to predict digital sync time if digital sync time data corrupted
 t0=55;
-% estimated latency between display and sync time, used to predict measure time if digital measure corrupted
-displaylatency = ex.Config.Display.(ex.Display_ID).Latency;
-% estimated timer drift between `Command` and reference timeline, used to predict sync time if digital sync corrupted
+% estimated timer drift between `Command` and reference timeline, used to predict digital sync time if digital sync time data corrupted
 timerdriftspeed = ex.TimerDriftSpeed;
-displayfallriselagdiff = ex.Config.Display.(ex.Display_ID).FallRiseLagDiff;
-% max jitter(ms) around perdicted sync time
+% estimated latency between display and digital sync time, used to predict sync measure time if sync measure data corrupted
+displaylatency = ex.Config.Display.(ex.Display_ID).Latency;
+% max jitter(ms) around predicted sync time within which to search sync time data
 syncsearchradius = 20;
 %% Parse digital data
 if ~isempty(dataset)
     if ~isfield(dataset,'digital')
+        digital=[];
         if isfield(dataset,'ap') && isfield(dataset.ap,'digital')
             digital = dataset.ap.digital;
             fs = dataset.ap.meta.fs;
         elseif isfield(dataset,'lf') && isfield(dataset.lf,'digital')
             digital = dataset.lf.digital;
             fs = dataset.lf.meta.fs;
-        else
-            digital=[];
         end
         
-        if ~isempty(digital)
-            dataset.digital = digital;
-        end
+        dataset.digital = digital;
     end
     
-    if isfield(dataset,'digital')
+    if ~isempty(dataset.digital)
         startsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.StartSyncCh+1,dataset.digital));
         if ~isempty(startsyncchidx)
             t0=dataset.digital(startsyncchidx).time;
@@ -131,6 +126,9 @@ end
         end
     end
     function [uets] = uniqueeventtime(ts,es)
+        if length(ts) ~= length(es)
+            error('Time length(%i) does not match Event length(%i).',length(ts),length(es));
+        end
         if isempty(ts)
             uets= struct([]);
             return;
@@ -155,7 +153,7 @@ end
             ts=[ts,t];
         end
     end
-%% Parse CondTest Sync Event Time, get `Command`, `Sync` and `Measure` versions of SyncEvent Times, then Combine them to get the final most accurate time if any version is corrupted.
+%% Parse CondTest Sync Event Time, get `Command`, `Sync` and `Measure` versions of SyncEvent Times, then Combine them to get the final most accurate time.
 if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     % Parse SyncEvent Time recorded in `Command`
     synceventseq=[];synceventctidx=[];
@@ -170,7 +168,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
             e = uses{j};
             ee = ['Command_',e];
             if ~isfield(ex.CondTest,ee)
-                ex.CondTest.(ee)=cell(1,nct); % ensure each field has the same length
+                ex.CondTest.(ee)=cell(1,nct); % init same length for new field
             end
             ex.CondTest.(ee){i}=usets.(e);
         end
@@ -180,7 +178,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     % Check Sync Event Data
     iseventsync = false;
     iseventmeasure = false;
-    if ~isempty(dataset) && isfield(dataset,'digital')
+    if ~isempty(dataset) && isfield(dataset,'digital') && ~isempty(dataset.digital)
         if ex.EventSyncProtocol.nSyncChannel==1 && ex.EventSyncProtocol.nSyncpEvent==1
             eventsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.EventSyncCh+1,dataset.digital));
             eventmeasurechidx = find(arrayfun(@(x)x.channel==ex.Config.EventMeasureCh+1,dataset.digital));
@@ -191,7 +189,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 eventsyncdata = dataset.digital(eventsyncchidx).data;
                 % clean noisy digital caused by logical high very close to threshold
                 if nsyncevents<length(eventsyncdata)
-                    warning('    Clean Noisy Sync Signal.         SyncEvents/DigitalEvents:    %d/%d    ...',nsyncevents, length(eventsyncdata));
+                    warning('    Clean Noisy Digital Sync.         SyncEvents/DigitalEvents:    %d/%d    ...',nsyncevents, length(eventsyncdata));
                     if ex.PreICI ==0 && ex.SufICI==0
                         minlowdur = max(8,ex.CondDur-100);
                         minhighdur = minlowdur;
@@ -205,7 +203,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                     iseventsyncerror=false;
                 else
                     iseventsyncerror=true;
-                    warning('    Event Sync Error.        Events/Syncs: %d/%d,    No Flips: %d',nsyncevents,length(eventsyncdata),find(diff(double(eventsyncdata))==0));
+                    warning('    Event Digital Sync Error.        SyncEvents/DigitalEvents: %d/%d,    Not Flippings: %d',nsyncevents,length(eventsyncdata),find(diff(double(eventsyncdata))==0));
                 end
                 ex.eventsyncintegrity=~iseventsyncerror;
             end
@@ -215,10 +213,26 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 eventmeasuretime = dataset.digital(eventmeasurechidx).time;
                 eventmeasuredata = dataset.digital(eventmeasurechidx).data;
                 % Correct digital lag caused by asymmetrical black/white display response time,
-                % here assume slow white -> black transition gives digital 0
-                if displayfallriselagdiff~=0
-                    fallindex = eventmeasuredata==0;
-                    eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfallriselagdiff;
+                % here assume white -> black transition gives digital 0
+                if isfield(ex.Config.Display.(ex.Display_ID),'FallRiseLagDiff')
+                    % estimated difference of display response time between `White -> Black` and `Black -> White`, used to correct sync measure data
+                    displayfallriselagdiff = ex.Config.Display.(ex.Display_ID).FallRiseLagDiff;
+                    if displayfallriselagdiff~=0
+                        fallindex = eventmeasuredata==0;
+                        eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfallriselagdiff;
+                    end
+                else
+                    % estimated display response time of `White -> Black` and `Black -> White`, used to correct sync measure data
+                    displayriselag = ex.Config.Display.(ex.Display_ID).RiseLag;
+                    displayfalllag = ex.Config.Display.(ex.Display_ID).FallLag;
+                    if displayriselag>0
+                        riseindex = eventmeasuredata==1;
+                        eventmeasuretime(riseindex) = eventmeasuretime(riseindex) - displayriselag;
+                    end
+                    if displayfalllag>0
+                        fallindex = eventmeasuredata==0;
+                        eventmeasuretime(fallindex) = eventmeasuretime(fallindex) - displayfalllag;
+                    end
                 end
                 % Given measuredata follow flip rule, and 1 event missing or adding, there is
                 % no way happened in middle of data, otherwise the flip rule
@@ -251,7 +265,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                     iseventmeasureerror=false;
                 else
                     iseventmeasureerror=true;
-                    warning('    Event Measure Error.        Events/Measures: %d/%d,    No Flips: %d',nsyncevents,length(eventmeasuredata),find(diff(double(eventmeasuredata))==0));
+                    warning('    Event Measure Sync Error.        SyncEvents/MeasureEvents: %d/%d,    Not Flippings: %d',nsyncevents,length(eventmeasuredata),find(diff(double(eventmeasuredata))==0));
                 end
                 ex.eventmeasureintegrity=~iseventmeasureerror;
             end
@@ -268,7 +282,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 ex.CondTest.(se){synceventctidx(i)} = [ex.CondTest.(se){synceventctidx(i)},eventsynctime(i)];
             end
         else
-            % Try to recover as many sync time as possible based on `Command` Time
+            % Try to recover as many sync time as possible based on `Command` time
             searchrecover('Command_','Sync_',eventsynctime,0,syncsearchradius);
         end
     end
@@ -283,12 +297,12 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
                 ex.CondTest.(me){synceventctidx(i)} = [ex.CondTest.(me){synceventctidx(i)},eventmeasuretime(i)];
             end
         else
-            % Try to recover as many measure time as possible based on `Sync` Time
+            % Try to recover as many measure time as possible based on `Sync` time
             searchrecover('Sync_','Measure_',eventmeasuretime,displaylatency,ex.Config.MaxDisplayLatencyError);
         end
     end
     
-    % Try to get the most accurate and complete first Cond On/Off Time
+    % Try to get the most accurate, first Cond-On("COND") and Cond-Off("SUFICI") time for each row of CondTest
     ismeasurecondon = isfield(ex.CondTest,'Measure_COND');
     issynccondon = isfield(ex.CondTest,'Sync_COND');
     iscommandcondon = isfield(ex.CondTest,'Command_COND');
@@ -296,7 +310,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     issynccondoff = isfield(ex.CondTest,'Sync_SUFICI');
     iscommandcondoff = isfield(ex.CondTest,'Command_SUFICI');
     
-    % Re-Evaluate Timing Params
+    % Re-Evaluate Timing Correction Params
     if ismeasurecondon && issynccondon
         m = firsteventtime('Measure_COND');
         s = firsteventtime('Sync_COND');
@@ -307,7 +321,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     end
     if issynccondon && iscommandcondon
         s = firsteventtime('Sync_COND')';
-        v = ref2time(firsteventtime('Command_COND')',t0,timerdriftspeed); % back to original `Command` time
+        v = ref2time(firsteventtime('Command_COND')',t0,timerdriftspeed); % revert back to original `Command` time
         valid = ~isnan(s) & ~isnan(v);
         s = s(valid); v = v(valid);
         X = [ones(length(v),1), v];
@@ -320,23 +334,24 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         ex.t0 = ex.CommandToSyncDelay;
     end
     
-    % remap Sync Event `Command` Time based on updated timing params
     if isfield(ex,'t0')
+        % ReMap Sync Event `Command` time based on updated timing correction params
         for i = 1:length(usyncevents)
             uce = ['Command_',usyncevents{i}];
             ex.CondTest.(uce)=cellfun(@(x)time2ref(ref2time(x,t0,timerdriftspeed),ex.t0,ex.EvalTimerDriftSpeed),ex.CondTest.(uce),'Un',0);
         end
+        % Re-Recover Sync Event `Sync` time based on updated `Command` time
+        if iseventsync && iseventsyncerror
+            searchrecover('Command_','Sync_',eventsynctime,0,syncsearchradius);
+        end
     end
     
-    % re-recover Sync Event `Sync` Time based on updated `Command` Time
-    if isfield(ex,'t0') && iseventsync && iseventsyncerror
-        searchrecover('Command_','Sync_',eventsynctime,0,syncsearchradius);
-    end
-    % re-recover Sync Event `Measure` Time based on updated DisplayLatency
+    % Re-Recover Sync Event `Measure` time based on updated DisplayLatency
     if isfield(ex,'EvalDisplayLatency') && iseventmeasure && iseventmeasureerror
         searchrecover('Sync_','Measure_',eventmeasuretime,displaylatency,ex.Config.MaxDisplayLatencyError);
     end
     
+    % find the most accurate time version(`Measure` > `Sync` > `Command`)
     condonversion='None';condoffversion='None';
     if ismeasurecondon
         ex.CondTest.CondOn=ex.CondTest.Measure_COND;
@@ -357,6 +372,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         ex.CondTest.CondOff=cellfun(@(x)x+displaylatency,ex.CondTest.Command_SUFICI,'Un',0);
     end
     
+    % try to replace missing time in more accurate time version with the corresponding one found in less accurate time version
     if isfield(ex.CondTest,'CondOn') && strcmp(condonversion,'Measure') && iseventmeasureerror && issynccondon
         mergeevents('CondOn','Sync_COND',displaylatency);
         condonversion='Sync';
@@ -371,6 +387,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
     if isfield(ex.CondTest,'CondOff') && strcmp(condoffversion,'Sync') && iseventsyncerror && iscommandcondoff
         mergeevents('CondOff','Command_SUFICI',displaylatency);
     end
+    
     % Try to get first Cond On/Off timing
     if isfield(ex.CondTest,'CondOn')
         ex.CondTest.CondOn=firsteventtime('CondOn');
@@ -383,7 +400,7 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         for i=1:nct-1
             currentontime=ex.CondTest.CondOn(i);
             nextontime = ex.CondTest.CondOn(i+1);
-            if (nextontime - currentontime) > (ex.CondDur+2*ex.Config.MaxDisplayLatencyError)
+            if (nextontime - currentontime) > (ex.CondDur+2*displaylatency+2*ex.Config.MaxDisplayLatencyError) % here is a quick hack, better sync trial events in future experiment
                 ex.CondTest.CondOff(i) = currentontime + ex.CondDur;
             else
                 ex.CondTest.CondOff(i)=nextontime;
@@ -401,10 +418,11 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
         ex.Cond.(f) = cellfun(@(x)tryparseparam(f,x),ex.Cond.(f),'uniformoutput',false);
     end
     
-    % parse conditions been actually tested in each condtest
+    % parse conditions been actually tested in each row of CondTest
     for i=1:length(fs)
         ctc.(fs{i}) = cell(1, nct);
     end
+    % check final ori and position
     isori = ismember('Ori',fs);
     isorioffset = ismember('OriOffset',fs);
     isposition = ismember('Position',fs);
@@ -463,7 +481,7 @@ if ~isempty(ex.Cond) && isfield(ex.CondTest,'CondIndex')
                 positionoffset = getparam(ex.EnvParam,'PositionOffset');
             end
             if isenvoripositionoffset
-                theta=ori+orioffset;
+                theta=ctc.Ori_Final{i};
                 finalposition=position+positionoffset*[cosd(theta) -sind(theta) 0; sind(theta) cosd(theta) 0; 0 0 1];
             else
                 finalposition=position+positionoffset;
