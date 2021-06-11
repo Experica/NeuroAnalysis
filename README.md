@@ -21,7 +21,7 @@ Supported data format:
 Spike Sorting can be incorporated in the pipeline.
 
 Supported Spike Sorting:
-* [Kilosort2](https://github.com/MouseLand/Kilosort2) (need [npy-matlab](https://github.com/kwikteam/npy-matlab))
+* [Kilosort](https://github.com/MouseLand/Kilosort) (need [npy-matlab](https://github.com/kwikteam/npy-matlab))
 
 Automatic data export while data acquisiting can be enabled, the new completely saved data will be checked periodically and exported if any were found.
 
