@@ -28,10 +28,10 @@ if iscell(dataset)
             [binrootdir,fn,~] = fileparts(binfiles{i});
             tn = strsplit(fn,'_');
             tn(cellfun(@(x)isempty(x),tn))=[];
-            concatname{i} = cellfun(@(x)x(1),tn);
+            concatname{i} = cellfun(@(x)x(1),tn(end-1:end));
         end
     end
-    concatname=strjoin(concatname,'-');
+    concatname=strjoin(concatname,'');
     concatfilepath = fullfile(binrootdir,concatname);
     if length(concatfilepath)>150
         concatfilepath = concatfilepath(1:150); % limit path name length on NTFS
@@ -145,10 +145,10 @@ ops.fshigh = 300;
 % ops.fslow = 7000;
 
 % minimum firing rate on a "good" channel (0 to skip)
-ops.minfr_goodchannels = 1/300;
+ops.minfr_goodchannels = 1/60;
 
 % minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
-ops.minFR = 1/300; % one spike every 5min
+ops.minFR = 1/60;
 
 % number of samples to average over (annealed from first to second value)
 ops.momentum = [20 400];
@@ -160,10 +160,10 @@ ops.sigmaMask = 30;
 ops.ThPre = 8;
 
 % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-ops.Th = [10 4];
+ops.Th = [12 6];
 
 % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-ops.lam = 10;
+ops.lam = 15;
 
 % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
 ops.AUCsplit = 0.9;
@@ -190,16 +190,9 @@ switch kilosortversion
         % blocks for registration. 0 turns it off, 1 does rigid registration. Replaces "datashift" option.
         ops.nblocks = 5;
         
-        ops.Th = [10 4];
-        ops.lam = 10;
-        ops.AUCsplit = 0.9;
-        
-        %         % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-        %         ops.Th = [9 9];
-        %         % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-        %         ops.lam = 20;
-        %         % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
-        %         ops.AUCsplit = 0.8;
+        ops.Th = [10 10];
+        ops.lam = 20;
+        ops.AUCsplit = 0.95;
 end
 
 %% danger, changing these settings can lead to fatal errors
@@ -228,6 +221,9 @@ switch kilosortversion
         rez = clusterSingleBatches(rez);
         % main tracking and template matching algorithm
         rez = learnAndSolve8b(rez);
+        % OPTIONAL: remove double-counted spikes - solves issue in which individual spikes are assigned to multiple templates.
+        % See issue 29: https://github.com/MouseLand/Kilosort2/issues/29
+        % rez = remove_ks2_duplicate_spikes(rez,'channel_separation_um',60);
         % final merges
         rez = find_merges(rez, 1);
         % final splits by SVD
@@ -657,8 +653,8 @@ disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
                 if isfield(dataset,'binfilerange')
                     writeNPY(dataset.binfilerange, fullfile(savePath, 'binfilerange.npy'));
                 end
-                %                 fprintf(fid,['dat_path = ''', strrep(rez.ops.fproc, '\', '/') '''\n']);
-                fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder usually in the sam folder of binaries
+                fprintf(fid,['dat_path = ''', strrep(rez.ops.fproc, '\', '/') '''\n']);
+                %                 fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder usually in the sam folder of binaries
                 fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
                 fprintf(fid,'nsample = %i\n',dataset.ap.meta.nFileSamp);
                 fprintf(fid,'dtype = ''int16''\n');
