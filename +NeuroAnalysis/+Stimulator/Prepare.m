@@ -22,8 +22,10 @@ d = dir(filepath);
 % disp(['Reading StimulatorFile:    ',filepath,'    Done.']);
 %% Prepare data
 if ~isempty(dataset)
-    if strcmp(dataset.DAQformat,'Scanbox') && (strcmp(dataset.source(1:3),'AF4') || strcmp(dataset.source(1:3),'AF3') || strcmp(dataset.source(1:3),'AF2') || strcmp(dataset.source(1:3),'AF1') || strcmp(dataset.source(1:3),'AE7')|| strcmp(dataset.source(1:3),'AE6')|| strcmp(dataset.source(1:3),'AE5'))
+    if strcmp(dataset.DAQformat,'Scanbox') && (strcmp(dataset.source(1:3),'AF7') || strcmp(dataset.source(1:3),'AF4') || strcmp(dataset.source(1:3),'AF3') || strcmp(dataset.source(1:3),'AF2') || strcmp(dataset.source(1:3),'AF1') || strcmp(dataset.source(1:3),'AE7')|| strcmp(dataset.source(1:3),'AE6')|| strcmp(dataset.source(1:3),'AE5'))
         dataset.Version=0;
+    else
+        dataset.Version=1;
     end
     disp(['Preparing Stimulator Data(v',num2str(dataset.Version),'):    ',filepath,'    ...']);
     stimulatordataset = NeuroAnalysis.Base.EvalFun(['NeuroAnalysis.Stimulator.prepare',num2str(dataset.Version)],{filepath,varargin});

@@ -51,15 +51,14 @@ end
 
 ex = parseex( ex );
 
-% Parse spike data
-if ~isempty(dataset) && strcmp(dataset.exptId,'Hartley') && strcmp(dataset.eventSource,'spike2')
-    ex = parseevent(ex);
-end
 
-% Align scanbox frame with spike2 for Hartley only 
-if ~isempty(dataset) && strcmp(dataset.exptId,'Hartley') && strcmp(dataset.eventSource,'spike2')
+if ~isempty(dataset) && (strcmp(dataset.exptId,'Hartley') || strcmp(dataset.exptId,'randomBar') || strcmp(dataset.exptId,'BO')) && strcmp(dataset.eventSource,'spike2')
+    % Parse spike data
+    ex = parseevent(ex);
+    % Align scanbox frame with spike2 
     ex = parsescanbox(ex);
 end
+
 
 % Standardize experimental parameters
 ex = NeuroAnalysis.Base.StandardizeEx(ex);
@@ -117,6 +116,21 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ex.PreICI = 0;
                 ex.CondDur = ex.EnvParam.h_per;   % in frame number, not in time, PL
                 ex.SufICI = 0;
+            case 'RD'
+                ex.PreITI = ex.EnvParam.predelay;
+                ex.TrialDur = ex.EnvParam.stim_time;
+                ex.SufITI = ex.EnvParam.postdelay;
+                ex.PreICI = 0;
+                ex.CondDur = ex.EnvParam.h_per;   % in frame number, not in time, PL
+                ex.SufICI = 0;
+            case 'MV'
+                ex.PreITI = ex.EnvParam.predelay;
+                ex.TrialDur = ex.EnvParam.stim_time;
+                ex.SufITI = ex.EnvParam.postdelay;
+                ex.PreICI = 0;
+                ex.CondDur = ex.EnvParam.h_per;   % in frame number, not in time, PL
+                ex.SufICI = 0;
+                
             case 'PG'
                 ex.PreICI = ex.EnvParam.predelay;
                 ex.CondDur = ex.EnvParam.stim_time;  % here is in time, sec
@@ -343,7 +357,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
             end
                 
                 if ex.nTrial == length(ex.(daqType).digital(1).time)/2
-                    if strcmp(ex.ID,'FG') && ex.PreICI==0 && ex.SufICI==0
+                    if (strcmp(ex.ID,'FG') || strcmp(ex.ID,'RD') || strcmp(ex.ID,'MV')) && ex.PreICI==0 && ex.SufICI==0
                         ex.CondTest.TrialOn = sample2time(ex.(daqType).digital(1).time(1:2:end),ex.(daqType).fs,dataset.secondperunit); %+ex.PreITI;
                         ex.CondTest.TrialOff= sample2time(ex.(daqType).digital(1).time(2:2:end),ex.(daqType).fs,dataset.secondperunit); %-ex.SufITI;
                         odt=ex.(daqType).digital(2).time;  % Photodiode channel time
@@ -351,7 +365,16 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                         % the first oneframepulse of trial will merge with the first condition flip if PreITI==0, so there
                         % would be 2 flip instead of 4 flip of trial oneframepulse
                         if isfield(ex.raw,'log')
-                            ex.ID = 'Hartley';
+                            if strcmp(dataset.exptId,'Hartley')
+                                ex.ID = 'Hartley';
+                            elseif strcmp(dataset.exptId,'randomBar')
+                                ex.ID = 'randomBar';
+                            elseif strcmp(dataset.exptId,'BO')
+                                ex.ID = 'BO';
+                             elseif strcmp(dataset.exptId,'NaturalScene')
+                                ex.ID = 'NaturalScene';
+                            end
+                                
 %                             ncondintrial =
 %                             (length(odt)-2*ex.nTrial)/ex.nTrial;  % Peichao: This is for old Ephys only (before AF4)
 %                             condon=[];
