@@ -194,10 +194,11 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ex.ID = 'Hartley';
             elseif strcmp(dataset.exptId,'randomBar')
                 ex.ID = 'randomBar';
-            elseif strcmp(dataset.exptId,'MV')
-                ex.ID = 'MV';
+            elseif strcmp(dataset.exptId,'BO')
+                ex.ID = 'BO';
+                elseif strcmp(dataset.exptId,'NaturalScene')
+                ex.ID = 'NaturalScene';
             end
-            
             log = ex.raw.log;
             ex.EnvParam.DisplayRefreshRate = log.frate;
             if strcmp(ex.ID,'Hartley')
@@ -227,7 +228,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
                 ex.CondTest.CondIndex=int64(condidx);
                 ex.CondTestCond = NeuroAnalysis.Base.arraystruct2structarray(ctc);
             end
-            if strcmp(ex.ID,'randomBar') || strcmp(ex.ID,'MV')
+            if strcmp(ex.ID,'randomBar') || strcmp(ex.ID,'BO') || strcmp(ex.ID,'NaturalScene')
                % So far, only attach log file without any processing.
                % The processing needed is to organize the ctc based on the random stimulus sequence.
                 % condidx=[];
@@ -381,7 +382,7 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
             end
                 
                 if ex.nTrial == length(ex.(daqType).digital(1).time)/2
-                    if (strcmp(ex.ID,'Hartley') || strcmp(ex.ID,'randomBar') || strcmp(ex.ID,'MV')) && ex.PreICI==0 && ex.SufICI==0
+                    if (strcmp(ex.ID,'Hartley') || strcmp(ex.ID,'randomBar') || strcmp(ex.ID,'BO') || strcmp(ex.ID,'NaturalScene')) && ex.PreICI==0 && ex.SufICI==0
                         ex.CondTest.TrialOn = sample2time(ex.(daqType).digital(1).time(1:2:end),ex.(daqType).fs,dataset.secondperunit); %+ex.PreITI;
                         ex.CondTest.TrialOff= sample2time(ex.(daqType).digital(1).time(2:2:end),ex.(daqType).fs,dataset.secondperunit); %-ex.SufITI;
                         odt=ex.(daqType).digital(2).time;  % Photodiode channel time

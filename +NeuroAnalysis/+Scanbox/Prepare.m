@@ -46,18 +46,8 @@ else
     dataset.eventSource = '';
 end
 
-if (~isempty(spike2File)) || (~isempty(spike2MatFile))
-     
+if (~isempty(spike2File)) || (~isempty(spike2MatFile)) 
     spike2TimeUnit = 1e-6;  %  1 micro sec per unit, feature of CED1401 
-    if contains(spike2File.name, 'randomBar','IgnoreCase',true) %|| contains(spike2MatFile.name, 'randomBar','IgnoreCase',true)
-        dataset.exptId = 'randomBar';
-    elseif contains(spike2File.name, 'hartley','IgnoreCase',true) %|| contains(spike2MatFile.name, 'hartley','IgnoreCase',true)
-        dataset.exptId = 'Hartley';
-    elseif contains(spike2File.name, 'BO','IgnoreCase',true) %|| contains(spike2MatFile.name, 'BO','IgnoreCase',true)
-        dataset.exptId = 'BO';
-    elseif contains(spike2File.name, 'NS','IgnoreCase',true) %|| contains(spike2MatFile.name, 'NS','IgnoreCase',true)
-        dataset.exptId = 'NaturalScene';
-    end
 end
 
 % Tansform spike2 .smr to matlab .mat

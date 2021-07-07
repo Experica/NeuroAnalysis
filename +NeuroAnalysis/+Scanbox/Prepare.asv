@@ -38,23 +38,25 @@ spike2File = dir(fullfile(filedir,[filename, '*.smr']));
 
 if (~isempty(spike2File))
     spike2MatFile = dir(fullfile(spike2File.folder,[spike2File.name(1:end-4), '.mat']));
-end
-isSyncdata = false;
-dataset.eventSource = '';
-
-
-if (~isempty(spike2File)) || (~isempty(spike2MatFile))
     isSyncdata = true;
     dataset.eventSource = 'spike2';
+else
+    spike2MatFile = struct([]);
+    isSyncdata = false;
+    dataset.eventSource = '';
+end
+
+if (~isempty(spike2File)) || (~isempty(spike2MatFile))
+     
     spike2TimeUnit = 1e-6;  %  1 micro sec per unit, feature of CED1401 
-    if contains(spike2File.name, 'randomBar','IgnoreCase',true) || contains(spike2MatFile.name, 'randomBar','IgnoreCase',true)
-        dataset.exptId = 'randomBar';
-    elseif contains(spike2File.name, 'hartley','IgnoreCase',true) || contains(spike2MatFile.name, 'hartley','IgnoreCase',true)
-        dataset.exptId = 'Hartley';
-    elseif contains(spike2File.name, 'BO','IgnoreCase',true) || contains(spike2MatFile.name, 'BO','IgnoreCase',true)
-        dataset.exptId = 'BO';
-    elseif contains(spike2File.name, 'NS','IgnoreCase',true) || contains(spike2MatFile.name, 'NS','IgnoreCase',true)
-        dataset.exptId = 'NaturalScene';
+    if contains(spike2File.name, 'randomBar','IgnoreCase',true) %|| contains(spike2MatFile.name, 'randomBar','IgnoreCase',true)
+        
+    elseif contains(spike2File.name, 'hartley','IgnoreCase',true) %|| contains(spike2MatFile.name, 'hartley','IgnoreCase',true)
+        
+    elseif contains(spike2File.name, 'BO','IgnoreCase',true) %|| contains(spike2MatFile.name, 'BO','IgnoreCase',true)
+        
+    elseif contains(spike2File.name, 'NS','IgnoreCase',true) %|| contains(spike2MatFile.name, 'NS','IgnoreCase',true)
+        
     end
 end
 
