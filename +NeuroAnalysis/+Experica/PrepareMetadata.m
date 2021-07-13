@@ -7,7 +7,7 @@ if (isempty(dataset) || ~isfield(dataset,'ex'))
     return;
 end
 disp('Preparing Experica Metadata:    ...');
-fields = {'ID', 'Subject_ID','RecordSite','RecordSession','sourceformat','date'};
+fields = {'Subject_ID','RecordSession','RecordSite','ID','sourceformat','date'};
 meta = NeuroAnalysis.Base.getstructfields(dataset.ex,fields);
 
 meta.files={dataset.filepath};

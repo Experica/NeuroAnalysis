@@ -4,10 +4,10 @@ function [ dataset ] = Prepare( filepath,varargin )
 
 p = inputParser;
 addRequired(p,'filepath');
-addOptional(p,'progress',1,@(x)isa(x,'logical'));
+addParameter(p,'ProgressBar',1,@(x)isa(x,'logical'));
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
-progress = p.Results.progress;
+isprogressbar = p.Results.ProgressBar;
 %% Open block
 dataset = [];
 [hfile] = fopen(filepath,'r');
@@ -126,7 +126,7 @@ switch dataset.imagehead.datatype
     case 14 % DAT_FLOAT
         datatype = '*single';
 end
-if progress
+if isprogressbar
     hwaitbar = waitbar(0,'Reading OI Block File ...');
 end
 dataset.image = cell(dataset.imagehead.ntrials,dataset.imagehead.nstimuli);
@@ -136,13 +136,13 @@ for i = 1:dataset.imagehead.ntrials
         for d = 1:dataset.imagehead.nframesperstim
             ti = fread(hfile,[dataset.imagehead.framewidth,dataset.imagehead.frameheight],datatype);
             dataset.image{i,s}(:,:,d) = ti';
-            if progress
+            if isprogressbar
                 waitbar((i*s*d)/(dataset.imagehead.ntrials*dataset.imagehead.nstimuli*dataset.imagehead.nframesperstim),hwaitbar);
             end
         end
     end
 end
-if progress
+if isprogressbar
     close(hwaitbar);
 end
 if ~isempty(dataset)

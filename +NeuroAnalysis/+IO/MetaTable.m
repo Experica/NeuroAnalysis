@@ -24,7 +24,7 @@ classdef MetaTable < handle
         function addRow(obj, test)
             %ADDROW Add a test
             
-            % Add UUID for test
+            % Get a UUID for the test
             test.UUID = char(java.util.UUID.randomUUID());
             % Add new fields to Tests struct array
             newfields = setdiff(fieldnames(test), fieldnames(obj.Tests));
@@ -33,10 +33,10 @@ classdef MetaTable < handle
                 [obj.Tests.(newfields{i})] = emptyColumn{:};
             end
             
-            % Search for duplicate old rows
+            % Search for old duplicates of the test
             matchindex =  [];
             searchtemplate = NeuroAnalysis.Base.getstructfields(test,...
-                {'Subject_ID', 'RecordSession'});
+                {'Subject_ID', 'RecordSession', 'RecordSite'});
             if isempty(searchtemplate)
                 keys = {};
                 values = {};
@@ -52,7 +52,7 @@ classdef MetaTable < handle
             end
             
             if ~isempty(matchindex)
-                % Keep old UUID
+                % Keep the old UUID
                 for i = 1:length(matchindex)
                     uuid = obj.Tests(matchindex(i)).UUID;
                     if ~isempty(uuid)
@@ -60,10 +60,12 @@ classdef MetaTable < handle
                         break;
                     end
                 end
-                % Merge new test and duplicate
-                test= NeuroAnalysis.Base.EvalFun(...
-                    ['NeuroAnalysis.',test.sourceformat,'.MergeMetadata'],...
-                    {obj, test,matchindex(1)});
+                % Merge duplicates to the new test
+                for i = 1:length(matchindex)
+                    test= NeuroAnalysis.Base.EvalFun(...
+                        ['NeuroAnalysis.',test.sourceformat,'.MergeMetadata'],...
+                        {obj, test,matchindex(i)});
+                end
                 % Delete duplicate rows
                 obj.Tests(matchindex)=[];
             else
@@ -73,7 +75,7 @@ classdef MetaTable < handle
                     test.(missingfields{i}) = {};
                 end
             end
-            % Add new row
+            % Add a new row
             obj.Tests(end+1) = test;
         end
         

@@ -13,6 +13,7 @@ Supported data format:
 * [SpikeGLX](http://billkarsh.github.io/SpikeGLX/)
 * [Scanbox](https://scanbox.org/)
 * [Optical Imaging](https://opt-imaging.com/)
+* [Imager](https://github.com/Experica/Imager/)
 * [Experica](https://experica.org/)
 * Stimulator
 * VisStim

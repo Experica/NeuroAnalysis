@@ -3,10 +3,10 @@ function [i] = FindMetadata(metatable,test,range)
 %   Detailed explanation goes here
 
 searchtemplate = NeuroAnalysis.Base.getstructfields(test,...
-    {'ID', 'RecordSite','sourceformat','filename'});
+    {'ID','sourceformat','filename'});
 keys = fieldnames(searchtemplate);
 values = struct2cell(searchtemplate);
-i = metatable.iquery(keys, values,range);
+i = metatable.iquery(keys,values,range);
 
 end
 
