@@ -211,9 +211,9 @@ if ~isempty(dataset)
                     meta.savedshanks = int64(cell2mat(C(1))+1);
                     meta.savedcols = int64(cell2mat(C(2))+1);
                     meta.savedrows = int64(cell2mat(C(3))+1);
-                    meta.nshanksaved = length(unique(meta.savedshanks));
-                    meta.ncolsaved = length(unique(meta.savedcols));
-                    meta.nrowsaved = length(unique(meta.savedrows));
+                    meta.nshanksaved = int64(length(unique(meta.savedshanks)));
+                    meta.ncolsaved = int64(length(unique(meta.savedcols)));
+                    meta.nrowsaved = int64(length(unique(meta.savedrows)));
                 end
             else
                 meta.fs = meta.niSampRate;
