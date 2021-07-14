@@ -36,11 +36,11 @@ exportdir = p.Results.exportdir;
         isUns = cellfun(@(x)strcmp(x,'unsorted'),C{2}(2:end));
         isMUA = cellfun(@(x)strcmp(x,'mua'),C{2}(2:end));
         isGood = cellfun(@(x)strcmp(x,'good'),C{2}(2:end));
-        cgs = zeros(size(cids));
         
-        cgs(isGood) = 1;
-        cgs(isMUA) = 2;
-        cgs(isUns) = 3;
+        cgs = zeros(size(cids));
+        cgs(isGood(~ise)) = 1;
+        cgs(isMUA(~ise)) = 2;
+        cgs(isUns(~ise)) = 3;
         
         [~,isort] = sort(cids);
         cids = cids(isort);
@@ -64,7 +64,7 @@ if isbinfilerange
     binfilerange = readNPY(fullfile(phydir, 'binfilerange.npy'));
 end
 
-ss = readNPY(fullfile(phydir, 'spike_times.npy'));
+spikeTimes = readNPY(fullfile(phydir, 'spike_times.npy'));
 spikeTemplates = readNPY(fullfile(phydir, 'spike_templates.npy'));
 
 if exist(fullfile(phydir, 'spike_clusters.npy'),'file')
@@ -122,17 +122,17 @@ if iscg
         
         cgs = cgs(~noisecluidx);
         cids = cids(~noisecluidx);
-        vi = ~ismember(clu, noisecluid);
+        vsi = ~ismember(clu, noisecluid);
         if loadpc
-            pcFeat = pcFeat(vi, :,:);
-            %pcFeatInd = pcFeatInd(~ismember(cids, noiseClusters),:);
+            pcFeat = pcFeat(vsi, :,:);
+            %             pcFeatInd = pcFeatInd(~ismember(cids, noisecluid),:);
         end
-        ss = ss(vi);
-        spikeTemplates = spikeTemplates(vi);
-        tempScalingAmps = tempScalingAmps(vi);
-        clu = clu(vi);
+        spikeTimes = spikeTimes(vsi);
+        spikeTemplates = spikeTemplates(vsi);
+        tempScalingAmps = tempScalingAmps(vsi);
+        clu = clu(vsi);
         
-        % overwrite KS labels with Phy labels
+        % merge Phy labels into KS labels
         if iscgKS
             noisecluksidx = ismember(cidsKS, noisecluid);
             cgsKS = cgsKS(~noisecluksidx);
@@ -143,11 +143,10 @@ if iscg
         end
     end
 end
-
 disp(['Reading Phy Dir:    ',phydir,'    Done.']);
 %% Prepare Spike
 switch (spike.sort_from)
-    case 'kilosort'
+    case {'Kilosort_v2','Kilosort_v3'}
         [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_waveform_feature]...
             = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
         % Templates feature
@@ -164,13 +163,13 @@ switch (spike.sort_from)
         spike.pcFeat = pcFeat;
         spike.pcFeatInd = pcFeatInd;
         
-        spike.time = NeuroAnalysis.Base.sample2time(double(ss),spike.fs,spike.secondperunit);
+        spike.time = NeuroAnalysis.Base.sample2time(double(spikeTimes),spike.fs,spike.secondperunit);
         spike.template = int64(spikeTemplates)+1;
         spike.templatescale = tempScalingAmps;
         spike.amplitude = spikeAmps;
         
         spike.cluster = int64(clu)+1;
-        spike.clusterid = unique(spike.cluster); % already sorted in `unique`
+        spike.clusterid = unique(spike.cluster,'sorted');
         spike.clustergood = cgsKS; % match the already sorted cluster ids
         
         % Cluster feature
@@ -179,12 +178,13 @@ switch (spike.sort_from)
         bindir = join(dirparts(1:end-1),filesep);
         binpath = fullfile(bindir{1},[fn,fe]);
         if exist(binpath,'file') && getclufeature
-            mpbinfile = memmapfile(binpath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
-            [cluwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mpbinfile,...
-                double(ss),spike.cluster,spike.clusterid,spike.chanmap,spike.channelposition,spike.fs);
+            mmapbinfile = memmapfile(binpath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
+            [cluwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mmapbinfile,...
+                double(spikeTimes),spike.cluster,spike.clusterid,spike.chanmap,spike.channelposition,spike.fs);
             spike.clusterwaveform = cluwaveform;
             spike.clusterwaveformfeature = cluwaveformfeature;
         end
+        spike.sort_from = 'kilosort';
 end
 spike.qcversion='Phy';
 spike.qc = [];
@@ -192,7 +192,7 @@ spike.qc = [];
 fieldtomerge = ['spike_',spike.sort_from];
 ds = split(spike.dataset_path,', ');
 if length(ds)>1
-    % result is from concat binary file, need to split it for each dataset
+    % phy result is from concat binary file, need to split it for each dataset
     if isbinfilerange
         for i=1:length(ds)
             merge2dataset(ds{i},fieldtomerge,NeuroAnalysis.Base.splitspike(spike,binfilerange(i:i+1)));
@@ -204,6 +204,7 @@ if length(ds)>1
 else
     merge2dataset(ds{1},fieldtomerge,spike);
 end
+% data have been merged, no need to export anymore.
 dataset.earlyfinish = true;
 %%
     function merge2dataset(datasetpath,mergefield,spike)
@@ -213,7 +214,11 @@ dataset.earlyfinish = true;
         end
         disp(['Merge Phy Result to Dataset:    ',datasetpath,'    ...']);
         odataset = matfile(datasetpath,'Writable',true);
-        odataset.(mergefield) = NeuroAnalysis.Base.copyStructFields(spike,odataset.(mergefield));
+        if isfield(odataset,mergefield)
+            odataset.(mergefield) = NeuroAnalysis.Base.copyStructFields(spike,odataset.(mergefield));
+        else
+            odataset.(mergefield) = spike;
+        end
         disp(['Merge Phy Result to Dataset:    ',datasetpath,'    Done.']);
     end
 end

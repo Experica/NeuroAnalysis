@@ -10,13 +10,13 @@ for t = 1:size(temps,1)
     tempsUnW(t,:,:) = squeeze(temps(t,:,:))*winv;
 end
 
-% The template amplitude on each channel is the height between trough to peak
+% The template amplitude on each channel is the height between trough and peak
 tempChanAmps = squeeze(max(tempsUnW,[],2))-squeeze(min(tempsUnW,[],2));
 
 % The template amplitude is the amplitude of its largest channel
 [tempAmpsUnscaled,maxch] = max(tempChanAmps,[],2);
 
-% template center of mass from masked weighted channel positions as soma position
+% soma position as the template amplitude weighted channel positions(center of mass) within a radius centered on max template amplitude channel
 tempcoords = zeros(size(temps,1),size(coords,2));
 for t = 1:size(temps,1)
     maxchpos = coords(maxch(t),:);
