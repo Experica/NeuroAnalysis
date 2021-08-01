@@ -6,10 +6,11 @@ p = inputParser;
 p.StructExpand = false;
 addRequired(p,'filepath');
 addOptional(p,'dataset',struct([]));
+addParameter(p,'exportdir','')
 parse(p,filepath,varargin{:});
 filepath = p.Results.filepath;
 dataset = p.Results.dataset;
-
+exportdir = p.Results.exportdir;
 %% Check file
 exdataset = [];
 if(exist(filepath,'file')~=2)

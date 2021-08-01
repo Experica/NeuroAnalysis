@@ -1,13 +1,13 @@
 function [ex] = StandardizeEx(ex)
-%STANDARDIZEEX Summary of this function goes here
+%STANDARDIZEEX Convert params to standard name and value type.
 %   Detailed explanation goes here
 
 import NeuroAnalysis.Base.*
 
-%% Experimental data
+%% Experimental parameters
 ex = standardizeParams(ex, ExStandard);
 
-%% Environment parameters and factors
+%% Environmental parameters and factors
 if isfield(ex, 'EnvParam')
     ex.EnvParam = standardizeParams(ex.EnvParam, ExFactorStandard);
 end

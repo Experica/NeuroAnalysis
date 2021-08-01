@@ -56,6 +56,8 @@ end
 fmt = dataset.meta.DataFormat;
 width = dataset.meta.ImageFormat.Width;
 height = dataset.meta.ImageFormat.Height;
+dataset.meta.ImageFormat.Width = int64(dataset.meta.ImageFormat.Width);
+dataset.meta.ImageFormat.Height = int64(dataset.meta.ImageFormat.Height);
 pixfmt = dataset.meta.ImageFormat.PixelFormat;
 file = arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.',fmt])),'uniformoutput',0);
 ts = cellfun(@(x)regexp(x,[filename,'-Epoch(\d*)-Frame(\d*)[.]',fmt],'tokens','once'),file,'uniformoutput',0);
@@ -81,10 +83,12 @@ nfile = size(ftable,1);
 
 if isnaturalorder
     ue = unique(epoch,'sorted');
-    es = cell(length(ue),1);
-    for i=1:length(ue)
+    ne = length(ue);
+    es = cell(ne,1);
+    for i=1:ne
         es{i} = ftable.file(ftable.epoch==ue(i));
     end
+    dataset.imagenepoch = int64(ne);
     dataset.imagefile = es;
 else
     dataset.imagefile = table2struct(ftable);
