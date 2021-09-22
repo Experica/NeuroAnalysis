@@ -482,16 +482,17 @@ disp(['Preparing Stimulator File:    ',filepath,'    Done.']);
         sbxFrameId = sbx.frame;
         sbxLineId = sbx.line;
         sbxLineNum = sbx.sz(1);
-        sbxFrameId = sbxFrameId + sbxLineId./sbxLineNum;
+        sbxFrameId = sbxFrameId' + sbxLineId'./sbxLineNum;
         frameinTrial =  diff(sbxFrameId);
         frameinTrial = frameinTrial(1:2:end);
         timeinTrial = ex.CondTest.TrialOff-ex.CondTest.TrialOn;  % sec per trial 
-        ex.timeperFrame = mean(timeinTrial'./frameinTrial);  % sec per frame
-        ex.trialOnTimeCorrect =  ex.CondTest.TrialOn + (0.5-(ex.CondTest.TrialOn - floor(ex.CondTest.TrialOn))) * ex.timeperFrame;  % corrected on time
-        ex.trialOffTimeCorrect =  ex.CondTest.TrialOff + (0.5-(ex.CondTest.TrialOff - floor(ex.CondTest.TrialOff))) * ex.timeperFrame; % corrected off time
-        ex.firstScan = ex.CondTest.TrialOn(1) - sbxFrameId(1) * ex.timeperFrame + 0.2;  % time of start first frame.
+        ex.timeperFrame = mean(timeinTrial./frameinTrial);  % sec per frame
+        ex.trialOnTimeCorrect =  ex.CondTest.TrialOn + (0.5-(sbxFrameId(1:2:end) - floor(sbxFrameId(1:2:end)))) * ex.timeperFrame;  % corrected on time
+        ex.trialOffTimeCorrect =  ex.CondTest.TrialOff + (0.5-(sbxFrameId(2:2:end) - floor(sbxFrameId(2:2:end)))) * ex.timeperFrame; % corrected off time
+%         ex.firstScan = ex.CondTest.TrialOn(1) - sbxFrameId(1) * ex.timeperFrame + 0.2;  % time of start first frame.
+        ex.firstScan = ex.trialOnTimeCorrect(1) - (floor(sbxFrameId(1)) + 0.5 - (sbxFrameId(1) - floor(sbxFrameId(1)))) * ex.timeperFrame;  % time of start first frame.
         ex.frameTimeSer = [1:sbx.totalFrame].* ex.timeperFrame + ex.firstScan - ex.timeperFrame/2;      % time series for every frame in whole recording.
-        ex.timeShiftOn = ex.frameTimeSer(sbx.frame(1:2:end)) - ex.trialOnTimeCorrect;
-        ex.timeShiftOff = ex.frameTimeSer(sbx.frame(2:2:end)) - ex.trialOffTimeCorrect;
+%         ex.timeShiftOn = ex.frameTimeSer(sbx.frame(1:2:end)) - ex.trialOnTimeCorrect;
+%         ex.timeShiftOff = ex.frameTimeSer(sbx.frame(2:2:end)) - ex.trialOffTimeCorrect;
     end
 end
