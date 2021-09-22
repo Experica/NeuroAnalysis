@@ -55,28 +55,15 @@ timerdriftspeed = ex.TimerDriftSpeed;
 displaylatency = ex.Config.Display.(ex.Display_ID).Latency;
 % max jitter(ms) around predicted sync time within which to search sync time data
 syncsearchradius = 20;
-%% Parse digital data
-if ~isempty(dataset)
-    if ~isfield(dataset,'digital')
-        digital=[];
-        if isfield(dataset,'ap') && isfield(dataset.ap,'digital')
-            digital = dataset.ap.digital;
-            fs = dataset.ap.meta.fs;
-        elseif isfield(dataset,'lf') && isfield(dataset.lf,'digital')
-            digital = dataset.lf.digital;
-            fs = dataset.lf.meta.fs;
-        end
-        
-        dataset.digital = digital;
-    end
-    
-    if ~isempty(dataset.digital)
-        startsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.StartSyncCh+1,dataset.digital));
-        if ~isempty(startsyncchidx)
-            t0=dataset.digital(startsyncchidx).time;
-        end
-    end
-end
+
+
+%     if strcmp(dataset.sourceformat,'Ripple') && ~isempty(dataset.digital)
+%         startsyncchidx = find(arrayfun(@(x)x.channel==ex.Config.StartSyncCh+1,dataset.digital));
+%         if ~isempty(startsyncchidx)
+%             t0=dataset.digital(startsyncchidx).time;
+%         end
+%     end
+
 %%
     function searchrecover(from,to,data,latency,sr)
         names = fieldnames(ex.CondTest);

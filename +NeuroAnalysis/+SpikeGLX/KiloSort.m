@@ -1,6 +1,10 @@
-function [ dataset ] = KiloSort( dataset )
+function [ dataset ] = KiloSort( dataset,ds )
 %KILOSORT Summary of this function goes here
 %   Detailed explanation goes here
+
+if nargin==1
+    ds='ap';
+end
 
 %% Concat binary files in time order into one binary file, then kilosort on it to get consistent cluster id across multiple binary files
 if iscell(dataset)
@@ -113,27 +117,27 @@ switch kilosortversion
 end
 
 %% KiloSort ops
-disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.ap.meta.fileName,'    ...']);
+disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(ds).meta.fileName,'    ...']);
 
 % the binary file
-ops.fbinary = dataset.ap.meta.fileName;
+ops.fbinary = dataset.(ds).meta.fileName;
 
 % the binary file folder
 [binrootdir,binname,~] = fileparts(ops.fbinary);
 
 % the probe channel map
 [thisdir,~,~] = fileparts(mfilename('fullpath'));
-ops.chanMap = neuropixelschmap(dataset.ap.meta);
+ops.chanMap = neuropixelschmap(dataset.(ds).meta);
 
 % exclude channels
-excludechans = dataset.ap.meta.excludechans;
+excludechans = dataset.(ds).meta.excludechans;
 if ~isempty(excludechans)
     disp(['Excluding Channels: ', num2str(excludechans)])
     ops.chanMap.connected(excludechans)=false;
 end
 
 % sample rate
-ops.fs = dataset.ap.meta.fs;
+ops.fs = dataset.(ds).meta.fs;
 
 % frequency for high pass filtering
 ops.fshigh = 300;
@@ -160,10 +164,10 @@ ops.sigmaMask = 30;
 ops.ThPre = 8;
 
 % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-ops.Th = [12 6];
+ops.Th = [12 4];
 
 % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-ops.lam = 15;
+ops.lam = 10;
 
 % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
 ops.AUCsplit = 0.9;
@@ -175,7 +179,7 @@ ops.fproc = fullfile(binrootdir,['kilosort',kilosortversion,'_temp_wh.dat']);
 ops.trange = [0 Inf];
 
 % total number of channels in your recording
-ops.NchanTOT = double(dataset.ap.meta.nSavedChans);
+ops.NchanTOT = double(dataset.(ds).meta.nSavedChans);
 
 % common average referencing by median
 ops.CAR = 1;
@@ -243,7 +247,7 @@ switch kilosortversion
 end
 
 fprintf('Found %d / %d good units \n', sum(rez.good>0),length(rez.good));
-disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.ap.meta.fileName,'    done.']);
+disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(ds).meta.fileName,'    done.']);
 
 %% Get sorted spikes
 disp('Extract Spike Sorting Result    ...');
@@ -263,7 +267,7 @@ end
 disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    ...']);
 switch kilosortversion
     case '2'
-        rez2phy(rez,phydir,dataset);
+        rez2phy(rez,phydir,dataset,ds);
     case '3'
         rez2phy2(rez,phydir,dataset);
 end
@@ -280,23 +284,27 @@ disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
             dx = meta.probespacing(1);dy=meta.probespacing(2);
             cols = double(meta.savedcols);rows = double(meta.savedrows);
             
-            if meta.probeversion == 0 % Phase3A checkboard
+            if meta.probeversion <= 1 % Phase3A/3B/1.0 checkboard
                 chmap.xcoords = arrayfun(@(r,c)(dx/2 + (c-1)*dx) - abs(mod(r,2)-1)*dx/2,rows,cols);
                 chmap.ycoords = (rows-1)*dy;
-            else % Phase3B/1.0 regular
+            else % regular
                 chmap.xcoords = (cols-1)*dx;
                 chmap.ycoords = (rows-1)*dy;
             end
         end
     end
 %% for kilosort 2
-    function rez2phy(rez, savePath,dataset)
+    function rez2phy(rez, savePath,dataset,ds)
         % pull out results from kilosort's rez to either return to workspace or to
         % save in the appropriate format for the phy GUI to run on. If you provide
         % a savePath it should be a folder, and you will need to have npy-matlab
         % available (https://github.com/kwikteam/npy-matlab)
         %
         % This is a modified version of the `rezToPhy` function in Kilosort
+        
+        if nargin==3
+            ds='ap';
+        end
         
         rez.W = gather(single(rez.Wphy));
         rez.U = gather(single(rez.U));
@@ -456,7 +464,7 @@ disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
                 end
                 fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder in the sam folder of binaries
                 fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
-                fprintf(fid,'nsample = %i\n',dataset.ap.meta.nFileSamp);
+                fprintf(fid,'nsample = %i\n',dataset.(ds).meta.nFileSamp);
                 fprintf(fid,'dtype = ''int16''\n');
                 fprintf(fid,'offset = 0\n');
                 fprintf(fid,'sample_rate = %.32f\n',rez.ops.fs);
