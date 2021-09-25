@@ -56,6 +56,7 @@ disp(['Reading Phy Dir:    ',phydir,'    ...']);
 spike = NeuroAnalysis.Phy.loadphyparam(fullfile(phydir, 'params.py'));
 spike.fs = spike.sample_rate;
 spike.nch = spike.n_channels_dat;
+spike.imecindex = num2str(spike.imecindex);
 spike = rmfield(spike,'sample_rate');
 spike = rmfield(spike,'n_channels_dat');
 
@@ -189,20 +190,20 @@ end
 spike.qcversion='Phy';
 spike.qc = [];
 %% Merge to Dataset
-fieldtomerge = ['spike_',spike.sort_from];
-ds = split(spike.dataset_path,', ');
-if length(ds)>1
+fieldtomerge = ['spike',spike.imecindex,'_',spike.sort_from];
+dspath = split(spike.dataset_path,', ');
+if length(dspath)>1
     % phy result is from concat binary file, need to split it for each dataset
     if isbinfilerange
-        for i=1:length(ds)
-            merge2dataset(ds{i},fieldtomerge,NeuroAnalysis.Base.splitspike(spike,binfilerange(i:i+1)));
+        for i=1:length(dspath)
+            merge2dataset(dspath{i},fieldtomerge,NeuroAnalysis.Base.splitspike(spike,binfilerange(i:i+1)));
         end
     else
         warning('Need `binfilerange` file to split result to each dataset.');
         return
     end
 else
-    merge2dataset(ds{1},fieldtomerge,spike);
+    merge2dataset(dspath{1},fieldtomerge,spike);
 end
 % data have been merged, no need to export anymore.
 dataset.earlyfinish = true;

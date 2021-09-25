@@ -1,105 +1,112 @@
-function [ dataset ] = KiloSort( dataset,ds )
+function [ dataset ] = KiloSort( dataset,d )
 %KILOSORT Summary of this function goes here
 %   Detailed explanation goes here
 
 if nargin==1
-    ds='ap';
+    d='ap';
 end
 
 %% Concat binary files in time order into one binary file, then kilosort on it to get consistent cluster id across multiple binary files
 if iscell(dataset)
     datasets = cellfun(@load,dataset,'uniformoutput',0);
-    binfiles = cellfun(@(x)x.ap.meta.fileName,datasets,'uniformoutput',0);
-    binfiledate = cellfun(@(x)x.ap.meta.fileDate,datasets);
-    binfilensample = cellfun(@(x)x.ap.meta.nFileSamp,datasets);
-    
-    [~,isort]=sort(binfiledate);
-    dataset = dataset(isort);
-    datasets = datasets(isort);
-    binfiles=binfiles(isort);
-    binfilensample = binfilensample(isort);
-    % make concat file name
-    if strcmp(datasets{1}.ex.sourceformat, 'Stimulator')
-        binrootdir = fileparts(binfiles{1});
-        concatname=cell(1,length(binfiles)+1);
-        concatname{1} = datasets{1}.source(1:8);  % Works for AE9, not AE4 yet!
-        for i=1:length(binfiles)
-            concatname{i+1} = datasets{i}.source(10:12);
-        end
-    else
-        concatname=cell(size(binfiles));
-        for i=1:length(binfiles)
-            [binrootdir,fn,~] = fileparts(binfiles{i});
-            tn = strsplit(fn,'_');
-            tn(cellfun(@(x)isempty(x),tn))=[];
-            concatname{i} = cellfun(@(x)x(1),tn(end-1:end));
-        end
-    end
-    concatname=strjoin(concatname,'');
-    concatfilepath = fullfile(binrootdir,concatname);
-    if length(concatfilepath)>150
-        concatfilepath = concatfilepath(1:150); % limit path name length on NTFS
-    end
-    concatfilepath = [concatfilepath,'.imec.ap.bin'];
-    % demux channel groups
-    nchsaved = datasets{1}.ap.meta.nSavedChans;
-    dmxgroup = datasets{1}.ap.meta.dmxgroup;
-    if datasets{1}.ap.meta.probeversion>0
-        rmdc = false;
-    else
-        rmdc = true;
-    end
-    for g = 1:length(dmxgroup)
-        dmxgroup{g} = setdiff(dmxgroup{g},datasets{1}.ap.meta.excludechans);
-    end
-    dmxgroup(cellfun(@(x)isempty(x),dmxgroup))=[];
-    % concat binary files
-    if exist(concatfilepath,'file')
-        disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
-    else
-        cfid=fopen(concatfilepath,'w');
-        chunksample=1e7; % 1e7 Samples = 7.7GB for 385Chs, Int16
-        for i=1:length(binfiles)
-            fprintf('Concat Binary File:    %s    ...\n',binfiles{i});
-            fid=fopen(binfiles{i},'r');
-            remainingsample = binfilensample(i);
-            while remainingsample>0
-                if remainingsample - chunksample >=0
-                    readsample = chunksample;
-                else
-                    readsample = remainingsample;
-                end
-                chunkdata = fread(fid,[nchsaved,readsample],'*int16');
-                fprintf('        Demuxed CAR on chunk size:    %d    ...\n',readsample);
-                chunkdata = NeuroAnalysis.Base.dmxcar(chunkdata,dmxgroup,rmdc);
-                fwrite(cfid,chunkdata,'int16');
-                remainingsample = remainingsample - readsample;
+    imecindex = datasets{1}.imecindex;
+    ds = cellfun(@(x)['ap',x],imecindex,'uniformoutput',0);
+    for k = 1:length(ds)
+        d = ds{k};
+        binfiles = cellfun(@(x)x.(d).meta.fileName,datasets,'uniformoutput',0);
+        binfiledate = cellfun(@(x)x.(d).meta.fileDate,datasets);
+        binfilensample = cellfun(@(x)x.(d).meta.nFileSamp,datasets);
+        
+        [~,isort]=sort(binfiledate);
+        kdataset = dataset(isort);
+        kdatasets = datasets(isort);
+        binfiles = binfiles(isort);
+        binfilensample = binfilensample(isort);
+        % make concat file name
+        if strcmp(kdatasets{1}.ex.sourceformat, 'Stimulator')
+            binrootdir = fileparts(binfiles{1});
+            concatname=cell(1,length(binfiles)+1);
+            concatname{1} = kdatasets{1}.source(1:8);  % Works for AE9, not AE4 yet!
+            for i=1:length(binfiles)
+                concatname{i+1} = kdatasets{i}.source(10:12);
             end
-            fclose(fid);
+        else
+            concatname=cell(size(binfiles));
+            for i=1:length(binfiles)
+                [binrootdir,fn,~] = fileparts(binfiles{i});
+                tn = strsplit(fn,'_');
+                tn(cellfun(@(x)isempty(x),tn))=[];
+                concatname{i} = cellfun(@(x)x(1),tn(end-1:end));
+            end
         end
-        fclose(cfid);
-        disp('Concat Binary Files        Done.');
-    end
-    % prepare a new dataset with concat binary file
-    cdataset.secondperunit = datasets{1}.secondperunit;
-    cdataset.filepath = dataset;
-    cdataset.ap.meta = datasets{1}.ap.meta;
-    cdataset.ap.meta.fileName=concatfilepath;
-    cdataset.ap.meta.nFileSamp=sum(binfilensample);
-    % demuxed CAR could help to remove very fast transient noise, and then normal CAR in kilosort could further reduce other noise.
-    cdataset.car = 1;
-    % time range [t(i), t(i+1)) for each file in the concat file
-    cdataset.binfilerange = NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),cdataset.ap.meta.fs,cdataset.secondperunit);
-    clear datasets chunkdata % reclaim memory before KiloSort
-    cdataset = NeuroAnalysis.SpikeGLX.KiloSort(cdataset);
-    % split sorting result into each original dataset
-    if isfield(cdataset,'spike_kilosort')
-        disp('Split Sorting Result Into Dataset        ...');
-        for i=1:length(dataset)
-            odataset = matfile(dataset{i},'Writable',true);
-            odataset.spike_kilosort = NeuroAnalysis.Base.splitspike(cdataset.spike_kilosort,cdataset.binfilerange(i:i+1));
+        concatname=strjoin(concatname,'');
+        concatfilepath = fullfile(binrootdir,concatname);
+        if length(concatfilepath)>150
+            concatfilepath = concatfilepath(1:150); % limit path name length on NTFS
         end
-        disp('Split Sorting Result Into Dataset        Done.');
+        concatfilepath = [concatfilepath,'.imec',imecindex{k},'.ap.bin'];
+        % demux channel groups
+        nchsaved = datasets{1}.(d).meta.nSavedChans;
+        dmxgroup = datasets{1}.(d).meta.dmxgroup;
+        if datasets{1}.(d).meta.probeversion>1
+            rmdc = false;
+        else
+            rmdc = true;
+        end
+        for g = 1:length(dmxgroup)
+            dmxgroup{g} = setdiff(dmxgroup{g},datasets{1}.(d).meta.excludechans);
+        end
+        dmxgroup(cellfun(@(x)isempty(x),dmxgroup))=[];
+        % concat binary files
+        if exist(concatfilepath,'file')
+            disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
+        else
+            cfid=fopen(concatfilepath,'w');
+            chunksample=1e7; % 1e7 Samples = 7.7GB for 385Chs Int16, ≈ 5.6 min for 30kS/s
+            for i=1:length(binfiles)
+                fprintf('Concat Binary File:    %s    ...\n',binfiles{i});
+                fid=fopen(binfiles{i},'r');
+                remainingsample = binfilensample(i);
+                while remainingsample>0
+                    if remainingsample - chunksample >=0
+                        readsample = chunksample;
+                    else
+                        readsample = remainingsample;
+                    end
+                    chunkdata = fread(fid,[nchsaved,readsample],'*int16');
+                    fprintf('        Demuxed CAR on chunk size:    %d    ...\n',readsample);
+                    chunkdata = NeuroAnalysis.Base.dmxcar(chunkdata,dmxgroup,rmdc);
+                    fwrite(cfid,chunkdata,'int16');
+                    remainingsample = remainingsample - readsample;
+                end
+                fclose(fid);
+            end
+            fclose(cfid);
+            disp('Concat Binary Files        Done.');
+        end
+        % prepare a new dataset with concat binary file
+        kcdataset = struct;
+        kcdataset.secondperunit = kdatasets{1}.secondperunit;
+        kcdataset.filepath = kdataset;
+        kcdataset.(d).meta = kdatasets{1}.(d).meta;
+        kcdataset.(d).meta.fileName = concatfilepath;
+        kcdataset.(d).meta.nFileSamp = sum(binfilensample);
+        % demuxed CAR could help to remove very fast transient noise, and then CAR in kilosort could further reduce other noise.
+        kcdataset.car = 1;
+        % time range [t(i), t(i+1)) for each file in the concat file
+        kcdataset.binfilerange = NeuroAnalysis.Base.sample2time(cumsum([1,binfilensample]),kcdataset.(d).meta.fs,kcdataset.secondperunit);
+        clear kdatasets chunkdata % reclaim memory before KiloSort
+        kcdataset = NeuroAnalysis.SpikeGLX.KiloSort(kcdataset,d);
+        % split sorting result into each original dataset
+        sf = ['spike',d(3:end),'_kilosort'];
+        if isfield(kcdataset,sf)
+            disp('Split Sorting Result Into Dataset        ...');
+            for i=1:length(kdataset)
+                odataset = matfile(kdataset{i},'Writable',true);
+                odataset.(sf) = NeuroAnalysis.Base.splitspike(kcdataset.(sf),kcdataset.binfilerange(i:i+1));
+            end
+            disp('Split Sorting Result Into Dataset        Done.');
+        end
     end
     return;
 end
@@ -117,27 +124,26 @@ switch kilosortversion
 end
 
 %% KiloSort ops
-disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(ds).meta.fileName,'    ...']);
+disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(d).meta.fileName,'    ...']);
 
 % the binary file
-ops.fbinary = dataset.(ds).meta.fileName;
+ops.fbinary = dataset.(d).meta.fileName;
 
 % the binary file folder
 [binrootdir,binname,~] = fileparts(ops.fbinary);
 
 % the probe channel map
-[thisdir,~,~] = fileparts(mfilename('fullpath'));
-ops.chanMap = neuropixelschmap(dataset.(ds).meta);
+ops.chanMap = neuropixelschmap(dataset.(d).meta);
 
 % exclude channels
-excludechans = dataset.(ds).meta.excludechans;
+excludechans = dataset.(d).meta.excludechans;
 if ~isempty(excludechans)
     disp(['Excluding Channels: ', num2str(excludechans)])
     ops.chanMap.connected(excludechans)=false;
 end
 
 % sample rate
-ops.fs = dataset.(ds).meta.fs;
+ops.fs = dataset.(d).meta.fs;
 
 % frequency for high pass filtering
 ops.fshigh = 300;
@@ -164,10 +170,10 @@ ops.sigmaMask = 30;
 ops.ThPre = 8;
 
 % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-ops.Th = [12 4];
+ops.Th = [12 6];
 
 % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-ops.lam = 10;
+ops.lam = 15;
 
 % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
 ops.AUCsplit = 0.9;
@@ -179,9 +185,9 @@ ops.fproc = fullfile(binrootdir,['kilosort',kilosortversion,'_temp_wh.dat']);
 ops.trange = [0 Inf];
 
 % total number of channels in your recording
-ops.NchanTOT = double(dataset.(ds).meta.nSavedChans);
+ops.NchanTOT = double(dataset.(d).meta.nSavedChans);
 
-% common average referencing by median
+% global common average referencing by median(better to use local CAR which is not implementated yet)
 ops.CAR = 1;
 if isfield(dataset,'car')
     ops.CAR = dataset.car;
@@ -247,14 +253,14 @@ switch kilosortversion
 end
 
 fprintf('Found %d / %d good units \n', sum(rez.good>0),length(rez.good));
-disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(ds).meta.fileName,'    done.']);
+disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(d).meta.fileName,'    done.']);
 
 %% Get sorted spikes
 disp('Extract Spike Sorting Result    ...');
 spike = [];%extractrez(rez,dataset.secondperunit,55);
 disp('Extract Spike Sorting Result    done.');
 if ~isempty(spike)
-    dataset.spike_kilosort=spike;
+    dataset.(['spike',d(3:end),'_kilosort'])=spike;
 end
 
 phydir = fullfile(binrootdir,[binname,'_Kilosort',kilosortversion,'_Phy']);
@@ -267,7 +273,7 @@ end
 disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    ...']);
 switch kilosortversion
     case '2'
-        rez2phy(rez,phydir,dataset,ds);
+        rez2phy(rez,phydir,dataset,d);
     case '3'
         rez2phy2(rez,phydir,dataset);
 end
@@ -278,33 +284,28 @@ disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
         if meta.probeversion <= 1
             chmap.name = 'Neuropixels Phase3A/3B/1.0';
             chmap.connected = true(size(meta.roch));
-            chmap.shankind = ones(size(chmap.connected));
+            chmap.shankind = meta.savedshanks;
             chmap.chanMap0ind = double(meta.robank*meta.acqApLfSy(1) + meta.roch);
             chmap.chanMap = chmap.chanMap0ind+1;
             dx = meta.probespacing(1);dy=meta.probespacing(2);
             cols = double(meta.savedcols);rows = double(meta.savedrows);
             
-            if meta.probeversion <= 1 % Phase3A/3B/1.0 checkboard
-                chmap.xcoords = arrayfun(@(r,c)(dx/2 + (c-1)*dx) - abs(mod(r,2)-1)*dx/2,rows,cols);
-                chmap.ycoords = (rows-1)*dy;
-            else % regular
-                chmap.xcoords = (cols-1)*dx;
-                chmap.ycoords = (rows-1)*dy;
-            end
+            % checkboard
+            chmap.xcoords = arrayfun(@(r,c)(dx/2 + (c-1)*dx) - abs(mod(r,2)-1)*dx/2,rows,cols);
+            chmap.ycoords = (rows-1)*dy;
+            % regular
+            %             chmap.xcoords = (cols-1)*dx;
+            %             chmap.ycoords = (rows-1)*dy;
         end
     end
 %% for kilosort 2
-    function rez2phy(rez, savePath,dataset,ds)
+    function rez2phy(rez, savePath,dataset,d)
         % pull out results from kilosort's rez to either return to workspace or to
         % save in the appropriate format for the phy GUI to run on. If you provide
         % a savePath it should be a folder, and you will need to have npy-matlab
         % available (https://github.com/kwikteam/npy-matlab)
         %
         % This is a modified version of the `rezToPhy` function in Kilosort
-        
-        if nargin==3
-            ds='ap';
-        end
         
         rez.W = gather(single(rez.Wphy));
         rez.U = gather(single(rez.U));
@@ -385,7 +386,6 @@ disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
         tempAmps = gain*tempAmps'; % for consistency, make first dimension template number
         
         if ~isempty(savePath)
-            
             writeNPY(spikeTimes, fullfile(savePath, 'spike_times.npy'));
             writeNPY(uint32(spikeTemplates-1), fullfile(savePath, 'spike_templates.npy')); % -1 for zero indexing
             if size(rez.st3,2)>4
@@ -464,7 +464,8 @@ disp(['Save Spike Sorting Result for Phy in:    ',phydir,'    done.']);
                 end
                 fprintf(fid,['dat_path = ''','../',fname ext '''\n']); % phy folder in the sam folder of binaries
                 fprintf(fid,'n_channels_dat = %i\n',rez.ops.NchanTOT);
-                fprintf(fid,'nsample = %i\n',dataset.(ds).meta.nFileSamp);
+                fprintf(fid,'nsample = %i\n',dataset.(d).meta.nFileSamp);
+                fprintf(fid,['imecindex = ''',d(3:end),'''\n']);
                 fprintf(fid,'dtype = ''int16''\n');
                 fprintf(fid,'offset = 0\n');
                 fprintf(fid,'sample_rate = %.32f\n',rez.ops.fs);

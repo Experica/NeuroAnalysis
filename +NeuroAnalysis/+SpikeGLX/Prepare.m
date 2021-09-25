@@ -113,15 +113,15 @@ if ~isempty(dataset)
     fs = fields(dataset);
     fs = fs(cellfun(@(x)~isempty(regexp(x,'(nidq|ap|lf)(\d*)', 'once')),fs));
     for j=1:length(fs)
-        ds=fs{j};
-        meta = dataset.(ds).meta;
-        meta.from = ds;
+        d=fs{j};
+        meta = dataset.(d).meta;
+        meta.from = d;
         
-        samefolderbin = strrep(dataset.(ds).metafile,'meta','bin');
+        samefolderbin = strrep(dataset.(d).metafile,'meta','bin');
         if(exist(samefolderbin,'file')==2)
             meta.fileName = samefolderbin;
         elseif(exist(meta.fileName,'file')~=2)
-            warning([upper(ds),' Stream Binaray File: ',meta.fileName,' not found.']);
+            warning([upper(d),' Stream Binaray File: ',meta.fileName,' not found.']);
             meta.fileName = '';
         end
         
@@ -133,22 +133,17 @@ if ~isempty(dataset)
             if isfield(meta, 'imDatPrb_type')
                 meta.probeversion = meta.imDatPrb_type;
             else
-                meta.probeversion = -1; % Phase3A probe
+                meta.probeversion = -1; % Phase3A
             end
-            % imec readout table, here only handle Phase3A, 1.0
-            C = textscan(meta.imroTbl, '(%d %d %d %d %d', ...
-                'EndOfLine', ')', 'HeaderLines', 1 );
-            meta.roch = int64(cell2mat(C(1)));
-            meta.robank = int64(cell2mat(C(2)));
-            meta.rorefch = int64(cell2mat(C(3)));
-            meta.roapgain = cell2mat(C(4));
-            meta.rolfgain = cell2mat(C(5));
-            % demux, spacing and ref channels
             switch (meta.probeversion)
                 case {21,24}
-                    % factor for converting 16-bit file data to voltage
+                    % factor for converting 16-bit data to voltage
                     fi2v = meta.imAiRangeMax / 8192;
                 otherwise % Phase3A - 1.0
+                    % probe channel spacing[x,y,z] in um
+                    spacing = [32,20,0];
+                    % factor for converting 16-bit data to voltage
+                    fi2v = meta.imAiRangeMax / 512;
                     % No. of channels multiplexed into one ADC
                     nchmx = 12;
                     % ADC1 {0,2,4,6,8,10,12,14,16,18,20,22}
@@ -163,12 +158,8 @@ if ~isempty(dataset)
                     for g = 2:nchmx
                         dmxgroup{g} = dmxgroup{g-1}+2;
                     end
-                    % probe channel spacing[x,y,z] in um
-                    spacing = [32,20,0];
-                    % factor for converting 16-bit file data to voltage
-                    fi2v = meta.imAiRangeMax / 512;
+                    % reference IDs
                     if isfield(meta, 'imProbeOpt') % Phase3A
-                        % 1-based index of reference IDs for probe option
                         switch  meta.imProbeOpt
                             case 4
                                 refch = int64([36, 75, 112, 151, 188, 227, 264]+1);
@@ -176,11 +167,20 @@ if ~isempty(dataset)
                                 refch = int64([36, 75, 112, 151, 188, 227, 264, 303, 340, 379]+1);
                         end
                         probesn = meta.imProbeSN;
-                    else
-                        % 192, 576, 960 for bank 0, 1, 2
-                        refch = int64(192);
+                        rofmt = '(%d %d %d %d %d';
+                    else % Phase3B - 1.0
+                        refch = int64(191+1); % 192, 576, 960 for bank 0, 1, 2
                         probesn = meta.imDatPrb_sn;
+                        rofmt = '(%d %d %d %d %d %d';
                     end
+                    % imec readout table
+                    C = textscan(meta.imroTbl, rofmt, ...
+                        'EndOfLine', ')', 'HeaderLines', 1 );
+                    meta.roch = int64(cell2mat(C(1)));
+                    meta.robank = int64(cell2mat(C(2)));
+                    meta.rorefch = int64(cell2mat(C(3)));
+                    meta.roapgain = cell2mat(C(4));
+                    meta.rolfgain = cell2mat(C(5));
             end
             meta.nchmx = nchmx;
             meta.dmxgroup = dmxgroup;
@@ -191,7 +191,7 @@ if ~isempty(dataset)
             % bad channels
             psn = ['SN_',num2str(meta.probesn)];
             if isstruct(probeinfo) && isfield(probeinfo,psn)
-                badch = probeinfo.(psn).(ds).badch;
+                badch = probeinfo.(psn).(d).badch;
                 for i = 1:length(badch)
                     if ischar(badch{i})
                         badch{i} = str2num(badch{i});
@@ -222,15 +222,14 @@ if ~isempty(dataset)
                 meta.ncolsaved = int64(length(unique(meta.savedcols)));
                 meta.nrowsaved = int64(length(unique(meta.savedrows)));
             end
-            meta.fi2v = meta.imAiRangeMax / 512;
-            meta.syncch = 6+1; % fixed bit 6 for imec sync
-        else
+            meta.syncch = 6+1; % fixed bit 6 for imec sync in PXI system
+        else % nidq
             meta.fs = meta.niSampRate;
+            % factor for converting 16-bit data to voltage
             meta.fi2v = meta.niAiRangeMax / 32768;
             meta.snsMnMaXaDw = int64(meta.snsMnMaXaDw);
             meta.syncch = meta.syncNiChan + 1;
         end
-        
         % Return original channel IDs, because the ith channel in the file isn't necessarily
         % the ith acquired channel, so it could be used to index ith saved to original.
         if ischar(meta.snsSaveChanSubset) && strcmp(meta.snsSaveChanSubset, 'all')
@@ -238,29 +237,28 @@ if ~isempty(dataset)
         else
             meta.savedchans = int64(meta.snsSaveChanSubset+1);
         end
-        dataset.(ds).meta = meta;
+        dataset.(d).meta = meta;
         
         % parse digital data
-        if ~startsWith(ds,'lf') && ~isempty(meta.fileName)
+        if ~startsWith(d,'lf') && ~isempty(meta.fileName)
             nsample=double(meta.nFileSamp);
             nch = double(meta.nSavedChans);
+            binmap = memmapfile(meta.fileName,'Format',{'uint16',[nch,nsample],'d'});
+            digital = NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.d(nch,:),nsample,16);
+            if ~isempty(digital)
+                for i=1:length(digital)
+                    digital(i).time = NeuroAnalysis.Base.sample2time(digital(i).time,meta.fs,dataset.secondperunit);
+                end
+                dataset.(d).digital = digital;
+            end
             
-%             binmap = memmapfile(meta.fileName,'Format',{'uint16',[nch,nsample],'d'});
-%             digital = NeuroAnalysis.Base.parsedigitalbitinanalog(binmap.Data.d(nch,:),nsample,16);
-%             if ~isempty(digital)
-%                 for i=1:length(digital)
-%                     digital(i).time = NeuroAnalysis.Base.sample2time(digital(i).time,meta.fs,dataset.secondperunit);
-%                 end
-%                 dataset.(ds).digital = digital;
-%             end
-            
-            if startsWith(ds,'ap')
+            if startsWith(d,'ap')
                 if iscell(batchexportcallback) && issortconcat && ~strcmp(spikesorting,'None')
                     batchexportcallback{1}=['NeuroAnalysis.SpikeGLX.',spikesorting];
                 else
                     switch spikesorting
                         case 'KiloSort'
-                            dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset,ds);
+                            dataset = NeuroAnalysis.SpikeGLX.KiloSort(dataset,d);
                     end
                 end
             end
@@ -270,17 +268,17 @@ if ~isempty(dataset)
     % digital markers, and sync timing difference between imec and nidq
     if ~isfield(dataset,'digital')
         digital=[];
-        if isempty(dataset.imecindex) % Phase3A, no sync
+        if isempty(dataset.imecindex{1}) % Phase3A, no sync
             if isfield(dataset,'ap') && isfield(dataset.ap,'digital')
                 digital = dataset.ap.digital;
             end
         else % PXI system, markers in nidq
             if isfield(dataset,'nidq') && isfield(dataset.nidq,'digital')
                 for i=1:length(dataset.imecindex)
-                    ds = ['ap',dataset.imecindex{i}];
-                    ss = ['syncdiff',dataset.imecindex{i}];
-                    if isfield(dataset,ds) && isfield(dataset.(ds),'digital')
-                        dataset.(ss) = syncdiff(dataset.nidq.digital,dataset.(ds).digital,dataset.nidq.meta.syncch,dataset.(ds).meta.syncch);
+                    d = ['ap',dataset.imecindex{i}];
+                    s = ['syncdiff',dataset.imecindex{i}];
+                    if isfield(dataset,d) && isfield(dataset.(d),'digital')
+                        dataset.(s) = syncdiff(dataset.nidq.digital,dataset.(d).digital,dataset.nidq.meta.syncch,dataset.(d).meta.syncch);
                     end
                 end
                 digital = dataset.nidq.digital(arrayfun(@(x)x.channel~=dataset.nidq.meta.syncch,dataset.nidq.digital));

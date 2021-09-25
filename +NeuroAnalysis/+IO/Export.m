@@ -11,9 +11,10 @@ if isa(datafile,'cell')
     result = NeuroAnalysis.Base.ApplyFunctions(funlist,vararginlist,isparallel);
     
     callbackfun = batchexportcallback{1};
+    callbackarg = batchexportcallback(2);
     if ~isempty(callbackfun)
         disp(['Applying Batch Export Callback:    ',callbackfun,'    ===========================================>']);
-        NeuroAnalysis.Base.EvalFun(callbackfun,batchexportcallback(2));
+        NeuroAnalysis.Base.EvalFun(callbackfun,callbackarg);
         disp(['Applying Batch Export Callback:    ',callbackfun,'    Done.']);
     end
     clear global batchexportcallback

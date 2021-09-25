@@ -8,7 +8,7 @@ spreadampthr = 0.15;
 nw=2000;
 % duration before and after trough point
 halfwaveduration=0.00134; % 1.34ms
-halfwavens = ceil(halfwaveduration*fs);
+halfwavens = floor(halfwaveduration*fs);
 spikerange = -halfwavens:halfwavens;
 ns = length(spikerange);
 nch = length(chmap);
