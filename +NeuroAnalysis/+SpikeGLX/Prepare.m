@@ -281,7 +281,13 @@ if ~isempty(dataset)
                         dataset.(s) = syncdiff(dataset.nidq.digital,dataset.(d).digital,dataset.nidq.meta.syncch,dataset.(d).meta.syncch);
                     end
                 end
-                digital = dataset.nidq.digital(arrayfun(@(x)x.channel~=dataset.nidq.meta.syncch,dataset.nidq.digital));
+                di = arrayfun(@(x)x.channel~=dataset.nidq.meta.syncch,dataset.nidq.digital);
+                digital = dataset.nidq.digital(di);
+                sync = dataset.nidq.digital(~di);
+                if ~isempty(sync)
+                    dataset.sync = sync.time;
+                    dataset.syncdt = mean(diff(dataset.sync));
+                end
             end
         end
         dataset.digital = digital;
