@@ -274,19 +274,39 @@ if ~isempty(dataset)
             end
         else % PXI system, markers in nidq
             if isfield(dataset,'nidq') && isfield(dataset.nidq,'digital')
-                for i=1:length(dataset.imecindex)
-                    d = ['ap',dataset.imecindex{i}];
-                    s = ['syncdiff',dataset.imecindex{i}];
-                    if isfield(dataset,d) && isfield(dataset.(d),'digital')
-                        dataset.(s) = syncdiff(dataset.nidq.digital,dataset.(d).digital,dataset.nidq.meta.syncch,dataset.(d).meta.syncch);
-                    end
-                end
                 di = arrayfun(@(x)x.channel~=dataset.nidq.meta.syncch,dataset.nidq.digital);
                 digital = dataset.nidq.digital(di);
                 sync = dataset.nidq.digital(~di);
                 if ~isempty(sync)
-                    dataset.sync = sync.time;
+                    % clean any random noise in nidq sync, here only handle random pluses on digital low state.
+                    synctime = sync.time;
+                    ri = find(sync.data~=0);
+                    fi = ri+1;
+                    if fi(end)>length(sync.data)
+                        fi = fi(1:end-1);
+                        ri = ri(1:end-1);
+                    end
+                    dt = dataset.nidq.meta.syncSourcePeriod/secondperunit/2;
+                    ni = find(synctime(fi)-synctime(ri) < dt/2);
+                    if ~isempty(ni)
+                        warning('Clean Noisy Sync Data ...');
+                        synctime([ri(ni),fi(ni)])=[];
+                    end
+                    dataset.sync = synctime;
                     dataset.syncdt = mean(diff(dataset.sync));
+                    
+                    for i=1:length(dataset.imecindex)
+                        d = ['ap',dataset.imecindex{i}];
+                        s = ['syncdiff',dataset.imecindex{i}];
+                        if isfield(dataset,d) && isfield(dataset.(d),'digital')
+                            ti = find(arrayfun(@(x)x.channel==dataset.(d).meta.syncch,dataset.(d).digital));
+                            if isempty(ti)
+                                warning('Sync Data Not Found In %s, Skip SyncDiff ...',d);
+                            else
+                                dataset.(s) = syncdiff(dataset.sync,dataset.(d).digital(ti).time);
+                            end
+                        end
+                    end
                 end
             end
         end
@@ -296,19 +316,34 @@ if ~isempty(dataset)
     disp('Preparing SpikeGLX Data:    Done.');
 end
 
-    function [d] = syncdiff(ref,target,refch,targetch)
+    function [d] = syncdiff(rt,tt)
         d = [];
-        ri = find(arrayfun(@(x)x.channel==refch,ref));
-        ti = find(arrayfun(@(x)x.channel==targetch,target));
-        if isempty(ri) || isempty(ti)
-            warning('No Matching Sync Data');return
+        rn = length(rt);
+        tn = length(tt);
+        if rn == tn
+            d = tt - rt;
+        else
+            if abs(rn-tn)==1
+                warning('Matching %i Ref Sync Pluse to %i Target Sync Pluse ...',rn,tn);
+                tt1 = tt(1);
+                rt1 = rt(1);
+                if abs(tt1-rt1) > dataset.syncdt/2
+                    if tt1>rt1
+                        d = [0,tt-rt(2:end)];
+                    else
+                        d = tt(2:end)-rt;
+                    end
+                else
+                    if rn>tn
+                        d = [tt-rt(1:end-1),0];
+                    else
+                        d = tt(1:end-1)-rt;
+                    end
+                end
+            else
+                warning('Number of Sync Pluse(%i/%i) Not Matching, Skip SyncDiff ...',rn,tn);
+            end
         end
-        rsync = ref(ri);
-        tsync = target(ti);
-        if length(rsync.time) ~= length(tsync.time)
-            warning('Number of Sync Pluse Not Matching');return
-        end
-        d = tsync.time - rsync.time;
     end
 %% Prepare corresponding experimental data
 if ~isempty(dataset)
