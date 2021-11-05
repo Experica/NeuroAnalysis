@@ -278,20 +278,9 @@ if ~isempty(dataset)
                 digital = dataset.nidq.digital(di);
                 sync = dataset.nidq.digital(~di);
                 if ~isempty(sync)
-                    % clean any random noise in nidq sync, here only handle random pluses on digital low state.
-                    synctime = sync.time;
-                    ri = find(sync.data~=0);
-                    fi = ri+1;
-                    if fi(end)>length(sync.data)
-                        fi = fi(1:end-1);
-                        ri = ri(1:end-1);
-                    end
-                    dt = dataset.nidq.meta.syncSourcePeriod/secondperunit/2;
-                    ni = find(synctime(fi)-synctime(ri) < dt/2);
-                    if ~isempty(ni)
-                        warning('Clean Noisy Sync Data ...');
-                        synctime([ri(ni),fi(ni)])=[];
-                    end
+                    % clean any narrow pluses in nidq sync, here only handle dirac pluses
+                    % on digital low state(may be the ground level not equal or noisy).
+                    [synctime,syncdata] = NeuroAnalysis.Base.cleandigitalpluse(sync.time,sync.data,0.1,true);
                     dataset.sync = synctime;
                     dataset.syncdt = mean(diff(dataset.sync));
                     
@@ -306,6 +295,13 @@ if ~isempty(dataset)
                                 dataset.(s) = syncdiff(dataset.sync,dataset.(d).digital(ti).time);
                             end
                         end
+                    end
+                end
+                if ~isempty(digital)
+                    % clean any narrow pluses in nidq markers, here only handle dirac pluses
+                    % on digital low state(may be the ground level not equal or noisy).
+                    for i=1:length(digital)
+                        [digital(i).time,digital(i).data] = NeuroAnalysis.Base.cleandigitalpluse(digital(i).time,digital(i).data,0.1,true);
                     end
                 end
             end
