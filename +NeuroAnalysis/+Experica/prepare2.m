@@ -387,7 +387,8 @@ if isfield(ex.CondTest,'Event') && isfield(ex.CondTest,'SyncEvent')
         for i=1:nct-1
             currentontime=ex.CondTest.CondOn(i);
             nextontime = ex.CondTest.CondOn(i+1);
-            if (nextontime - currentontime) > (ex.CondDur+2*displaylatency+2*ex.Config.MaxDisplayLatencyError) % here is a quick hack, better sync trial events in future experiment
+            if (nextontime - currentontime) > (2*ex.CondDur+2*ex.Config.MaxDisplayLatencyError) % here is a quick hack, better sync trial events in future experiment
+                warning('Duration much longer than CondDur In Non-ICI CondTests, Use CondDur for CondOff ...');
                 ex.CondTest.CondOff(i) = currentontime + ex.CondDur;
             else
                 ex.CondTest.CondOff(i)=nextontime;

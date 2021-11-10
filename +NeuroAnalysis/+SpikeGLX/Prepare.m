@@ -280,7 +280,7 @@ if ~isempty(dataset)
                 if ~isempty(sync)
                     % clean any narrow pluses in nidq sync, here only handle dirac pluses
                     % on digital low state(may be the ground level not equal or noisy).
-                    [synctime,syncdata] = NeuroAnalysis.Base.cleandigitalpluse(sync.time,sync.data,0.1,true);
+                    [synctime,syncdata] = NeuroAnalysis.Base.cleandigitalpluse(sync.time,sync.data,0.1,true,'for nidq sync');
                     dataset.sync = synctime;
                     dataset.syncdt = mean(diff(dataset.sync));
                     
@@ -301,7 +301,7 @@ if ~isempty(dataset)
                     % clean any narrow pluses in nidq markers, here only handle dirac pluses
                     % on digital low state(may be the ground level not equal or noisy).
                     for i=1:length(digital)
-                        [digital(i).time,digital(i).data] = NeuroAnalysis.Base.cleandigitalpluse(digital(i).time,digital(i).data,0.1,true);
+                        [digital(i).time,digital(i).data] = NeuroAnalysis.Base.cleandigitalpluse(digital(i).time,digital(i).data,0.1,true,['for nidq digital channel ',num2str(digital(i).channel)]);
                     end
                 end
             end

@@ -1,11 +1,15 @@
-function [time,data] = cleandigitalpluse(time,data,width,sign)
+function [time,data] = cleandigitalpluse(time,data,width,sign,info)
 %CLEANDIGITALPLUSE remove narrow digital pluses
 
 if nargin < 3
     width = 1;
     sign = true;
+    info = '';
 elseif nargin < 4
     sign = true;
+    info = '';
+elseif nargin < 5
+    info = '';
 end
 
 if sign % positive pluse
@@ -28,9 +32,9 @@ end
 
 if ~isempty(i)
     if sign
-        warning('Clean Positive Digital Pluse Width < %g, At _|%i    %i|_ ...',width,ri(i),fi(i));
+        warning('Clean Positive Digital Pluse Width < %g, At _|%s    %s|_ %s ...',width,num2str(ri(i)),num2str(fi(i)),info);
     else
-        warning('Clean Negative Digital Pluse Width < %g, At -|%i    %i|- ...',width,fi(i),ri(i));
+        warning('Clean Negative Digital Pluse Width < %g, At -|%s    %s|- %s ...',width,num2str(fi(i)),num2str(ri(i)),info);
     end
     time([ri(i),fi(i)])=[];
     data([ri(i),fi(i)])=[];
