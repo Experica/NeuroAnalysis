@@ -17,8 +17,8 @@ cluwaveformfeature = cell(length(cluid),1);
 
 for i=1:length(cluid)
     cluidx = find(spikeclu==cluid(i));
-    cnw = min(nw,length(cluidx));
-    sidx = sort(cluidx(randperm(length(cluidx),cnw)));
+    cnw = min(nw,length(cluidx)-1); % exclude the last spike
+    sidx = sort(cluidx(randperm(length(cluidx)-1,cnw)));
     sr = arrayfun(@(i)spiketime(i)+spikerange,sidx,'uniformoutput',false);
     cluwaveforms = mmapbinfile.Data.ap(chmap,[sr{:}]);
     cluwaveforms = mean(reshape(cluwaveforms,nch,ns,[]),3,'double')'; % nsample x nch
