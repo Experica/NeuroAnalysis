@@ -10,7 +10,7 @@ sspike.templatescale = spike.templatescale(si);
 sspike.amplitude = spike.amplitude(si);
 
 % only info of the splited clusters are included
-sspike.cluster = sspike.cluster(si);
+sspike.cluster = spike.cluster(si);
 sspike.clusterid = unique(sspike.cluster,'sorted');
 cidx = arrayfun(@(x)find(x==spike.clusterid),sspike.clusterid);
 sspike.clustergood = spike.clustergood(cidx);
