@@ -12,13 +12,11 @@ end
 n = length(waveform);
 slopei = 1:ceil(fs*slopedt);
 
-% normalize to trough amplitude
-waveform = waveform/abs(min(waveform));
 [trough,troughi]=min(waveform);
 [peak,peaki]=max(waveform);
-sd = (peaki-troughi)/fs;
-ptr = peak/trough;
 amp = peak-trough;
+ptr = peak/trough;
+sd = (peaki-troughi)/fs;
 
     function [i]=searchvalueindex(start,step,stop,value)
         ssign = sign(waveform(start)-value);
@@ -29,33 +27,40 @@ amp = peak-trough;
         end
     end
 
+% normalize to trough amplitude
+ntwaveform = waveform/abs(trough);
+nttrough=min(ntwaveform);
 % width at half trough
-lefti = searchvalueindex(troughi,-1,1,trough/2);
-righti = searchvalueindex(troughi,1,n,trough/2);
+lefti = searchvalueindex(troughi,-1,1,nttrough/2);
+righti = searchvalueindex(troughi,1,n,nttrough/2);
 htw = (righti-lefti)/fs;
 % repolarization rate
 tsi = troughi+slopei;
-y = waveform(tsi(tsi<=n))';
+y = ntwaveform(tsi(tsi<=n))';
 X = [ones(size(y)), (1:length(y))'/fs];
 c = X\y;
 rprate = c(2);
 
+% normalize to peak amplitude
+npwaveform = waveform/abs(peak);
+nppeak=max(npwaveform);
 % width at half peak
-lefti = searchvalueindex(peaki,-1,1,peak/2);
-righti = searchvalueindex(peaki,1,n,peak/2);
+lefti = searchvalueindex(peaki,-1,1,nppeak/2);
+righti = searchvalueindex(peaki,1,n,nppeak/2);
 hpw = (righti-lefti)/fs;
 % recovery rate
 psi = peaki+slopei;
-y = waveform(psi(psi<=n))';
+y = npwaveform(psi(psi<=n))';
 X = [ones(size(y)), (1:length(y))'/fs];
 c = X\y;
 rcrate = c(2);
 
 
-swf.ttrough = troughi/fs; % trough time
+swf.amplitude = amp;
 swf.peaktroughratio = ptr;
 swf.duration = sd;
-swf.amplitude = amp;
+swf.ttrough = troughi/fs; % trough time
+
 swf.halftroughwidth = htw;
 swf.halfpeakwidth = hpw;
 swf.repolarrate = rprate;

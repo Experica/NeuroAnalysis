@@ -15,7 +15,7 @@ chwavefeature = [chwavefeature{:}];
 dtomaxch = chcoords(chmask,:)-chcoords(maxch,:);
 upchidx = dtomaxch(:,2)>=0;
 downchidx = dtomaxch(:,2)<=0;
-% 2D spread centered at max amplitude channel
+% 2D spatial spread centered at max amplitude channel
 upspread = max(dtomaxch(:,2));
 downspread = min(dtomaxch(:,2));
 leftspread = min(dtomaxch(:,1));
@@ -33,7 +33,7 @@ X = [ones(size(y)), dtomaxch(downchidx,2)];
 c = X\y;
 downpvinv = c(2);
 
-swf = chwavefeature(maxmaskedch);
+swf = chwavefeature(maxmaskedch); % 1D feature chosen from max amplitude channel
 swf.upspread = upspread;
 swf.downspread = downspread;
 swf.leftspread = leftspread;

@@ -6,7 +6,7 @@ function [cluwaveform,cluwaveformfeature] = clusterfeature(mmapbinfile,spiketime
 spreadampthr = 0.15;
 % maximum number of waveform to average
 nw=2000;
-% duration before and after trough point
+% duration before and after spike time
 halfwaveduration=0.00134; % 1.34ms
 halfwavens = floor(halfwaveduration*fs);
 spikerange = -halfwavens:halfwavens;

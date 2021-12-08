@@ -151,10 +151,10 @@ switch (spike.sort_from)
         [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_waveform_feature]...
             = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
         % Templates feature
-        spike.templates = temps; % nTemplates x nTimePoints x nChannels
-        spike.templatesposition = tempcoords;
-        spike.templatesamplitude = tempAmps;
-        spike.templateswaveform = templates_maxwaveform;
+        spike.templates = temps; % nTemplates x nTimePoints x nChannels, used to do spike sorting
+        spike.templatesposition = tempcoords; % position from template spatial spread
+        spike.templatesamplitude = tempAmps; % mean amplitude of spikes from a unwhiten, scaled template
+        spike.templateswaveform = templates_maxwaveform; % unwhiten waveform
         spike.templateswaveformfeature = templates_waveform_feature;
         
         spike.chanmap = chmap+1;
@@ -167,7 +167,7 @@ switch (spike.sort_from)
         spike.time = NeuroAnalysis.Base.sample2time(double(spikeTimes),spike.fs,spike.secondperunit);
         spike.template = int64(spikeTemplates)+1;
         spike.templatescale = tempScalingAmps;
-        spike.amplitude = spikeAmps;
+        spike.amplitude = spikeAmps; % scaled template amplitude
         
         spike.cluster = int64(clu)+1;
         spike.clusterid = unique(spike.cluster,'sorted');
@@ -182,7 +182,7 @@ switch (spike.sort_from)
             mmapbinfile = memmapfile(binpath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
             [cluwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mmapbinfile,...
                 double(spikeTimes),spike.cluster,spike.clusterid,spike.chanmap,spike.channelposition,spike.fs);
-            spike.clusterwaveform = cluwaveform;
+            spike.clusterwaveform = cluwaveform; % mean waveform on max amplitude channel
             spike.clusterwaveformfeature = cluwaveformfeature;
         end
         spike.sort_from = 'kilosort';
