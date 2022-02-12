@@ -62,13 +62,14 @@ if iscell(dataset)
             disp(['Use Existing Concat Binary File:    ',concatfilepath,'    ...']);
         else
             cfid=fopen(concatfilepath,'w');
-            chunksample=1e7; % 1e7 Samples = 7.7GB for 385Chs Int16, ≈ 5.6 min for 30kS/s
+            chunksample=1e6; % 1e6 Samples = 770MB for 385Chs Int16, ≈ 34 sec for 30kS/s
+            chunktestsample = round(1.5*chunksample);
             for i=1:length(binfiles)
                 fprintf('Concat Binary File:    %s    ...\n',binfiles{i});
                 fid=fopen(binfiles{i},'r');
                 remainingsample = binfilensample(i);
                 while remainingsample>0
-                    if remainingsample - chunksample >=0
+                    if remainingsample - chunktestsample >0
                         readsample = chunksample;
                     else
                         readsample = remainingsample;
