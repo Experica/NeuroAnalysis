@@ -55,14 +55,26 @@ end
 disp(['Reading Phy Dir:    ',phydir,'    ...']);
 spike = NeuroAnalysis.Phy.loadphyparam(fullfile(phydir, 'params.py'));
 spike.fs = spike.sample_rate;
+spike.datapath = spike.dat_path;
 spike.nch = spike.n_channels_dat;
 spike.imecindex = num2str(spike.imecindex);
 spike = rmfield(spike,'sample_rate');
+spike = rmfield(spike,'dat_path');
 spike = rmfield(spike,'n_channels_dat');
+if isfield(spike,'rawdat_path')
+    spike.rawdatapath = spike.rawdat_path;
+    spike.nchraw = spike.n_channels_rawdat;
+    spike = rmfield(spike,'rawdat_path');
+    spike = rmfield(spike,'n_channels_rawdat');
+end
 
 isbinfilerange = exist(fullfile(phydir, 'binfilerange.npy'),'file');
 if isbinfilerange
     binfilerange = readNPY(fullfile(phydir, 'binfilerange.npy'));
+end
+if exist(fullfile(phydir, 'dshift.npy'),'file')
+    spike.dshift = readNPY(fullfile(phydir, 'dshift.npy'));
+    spike.yblk = readNPY(fullfile(phydir, 'yblk.npy'));
 end
 
 spikeTimes = readNPY(fullfile(phydir, 'spike_times.npy'));
@@ -75,11 +87,20 @@ else
 end
 
 tempScalingAmps = readNPY(fullfile(phydir, 'amplitudes.npy'));
-chmap = readNPY(fullfile(phydir, 'channel_map.npy'));
-coords = readNPY(fullfile(phydir, 'channel_positions.npy'));
 temps = readNPY(fullfile(phydir, 'templates.npy'));
-w = readNPY(fullfile(phydir, 'whitening_mat.npy'));
-winv = readNPY(fullfile(phydir, 'whitening_mat_inv.npy'));
+
+spike.chanmap = int64(readNPY(fullfile(phydir, 'channel_map.npy')))+1;
+spike.channelposition = readNPY(fullfile(phydir, 'channel_positions.npy'));
+if exist(fullfile(phydir, 'channel_map_raw.npy'),'file')
+    spike.chanmapraw = int64(readNPY(fullfile(phydir, 'channel_map_raw.npy')))+1;
+end
+
+spike.whiteningmatrix = readNPY(fullfile(phydir, 'whitening_mat.npy'));
+spike.whiteningmatrixinv = readNPY(fullfile(phydir, 'whitening_mat_inv.npy'));
+if exist(fullfile(phydir, 'whitening_mat_raw.npy'),'file')
+    spike.whiteningmatrixraw = readNPY(fullfile(phydir, 'whitening_mat_raw.npy'));
+    spike.whiteningmatrixinvraw = readNPY(fullfile(phydir, 'whitening_mat_inv_raw.npy'));
+end
 
 if loadpc
     pcFeat = readNPY(fullfile(phydir,'pc_features.npy')); % nSpikes x nFeatures x nLocalChannels
@@ -125,8 +146,8 @@ if iscg
         cids = cids(~noisecluidx);
         vsi = ~ismember(clu, noisecluid);
         if loadpc
-            pcFeat = pcFeat(vsi, :,:);
-            %             pcFeatInd = pcFeatInd(~ismember(cids, noisecluid),:);
+            spike.pcFeat = pcFeat(vsi, :,:);
+            spike.pcFeatInd = pcFeatInd(vsi,:);
         end
         spikeTimes = spikeTimes(vsi);
         spikeTemplates = spikeTemplates(vsi);
@@ -147,22 +168,15 @@ end
 disp(['Reading Phy Dir:    ',phydir,'    Done.']);
 %% Prepare Spike
 switch (spike.sort_from)
-    case {'Kilosort_v2','Kilosort_v3'}
-        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_waveform_feature]...
-            = NeuroAnalysis.Base.templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
-        % Templates feature
+    case 'kilosort2'
+        % unwhiten template to accurately get template position and spread
+        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_waveform_feature]...
+            = NeuroAnalysis.Base.templatefeature(temps,spike.whiteningmatrixinv,spike.channelposition,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
         spike.templates = temps; % nTemplates x nTimePoints x nChannels, used to do spike sorting
         spike.templatesposition = tempcoords; % position from template spatial spread
         spike.templatesamplitude = tempAmps; % mean amplitude of spikes from a unwhiten, scaled template
         spike.templateswaveform = templates_maxwaveform; % unwhiten waveform
         spike.templateswaveformfeature = templates_waveform_feature;
-        
-        spike.chanmap = chmap+1;
-        spike.channelposition = coords;
-        spike.whiteningmatrix = w;
-        spike.whiteningmatrixinv = winv;
-        spike.pcFeat = pcFeat;
-        spike.pcFeatInd = pcFeatInd;
         
         spike.time = NeuroAnalysis.Base.sample2time(double(spikeTimes),spike.fs,spike.secondperunit);
         spike.template = int64(spikeTemplates)+1;
@@ -173,21 +187,53 @@ switch (spike.sort_from)
         spike.clusterid = unique(spike.cluster,'sorted');
         spike.clustergood = cgsKS; % match the already sorted cluster ids
         
-        % Cluster feature
-        [~,fn,fe] = fileparts(spike.dat_path);
+        % Cluster may not map 1:1 to template, so we extract cluster waveform from data and get waveform feature
+        [~,fn,fe] = fileparts(spike.datapath);
         dirparts = strsplit(phydir,filesep);
         bindir = join(dirparts(1:end-1),filesep);
         binpath = fullfile(bindir{1},[fn,fe]);
         if exist(binpath,'file') && getclufeature
             mmapbinfile = memmapfile(binpath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
-            [cluwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mmapbinfile,...
-                double(spikeTimes),spike.cluster,spike.clusterid,spike.chanmap,spike.channelposition,spike.fs);
-            spike.clusterwaveform = cluwaveform; % mean waveform on max amplitude channel
+            % binfile is raw data, so use identity whiteningmatrixinv
+            [cluwaveforms,clucoords,clumaxwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mmapbinfile,...
+                double(spikeTimes),spike.cluster,spike.clusterid,spike.chanmap,eye(size(spike.whiteningmatrixinv)),spike.channelposition,chmaskradius,spike.fs);
+            spike.clusterwaveforms = cluwaveforms; % mean waveform on channels
+            spike.clusterposition = clucoords; % position from cluster spatial spread
+            spike.clusterwaveform = clumaxwaveform; % mean waveform on max amplitude channel
             spike.clusterwaveformfeature = cluwaveformfeature;
         end
-        spike.sort_from = 'kilosort';
+    case 'kilosort3'
+        % use correct whiteningmatrixinv to restore unwhiten template waveform
+        [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_waveform_feature]...
+            = NeuroAnalysis.Base.templatefeature(temps,spike.whiteningmatrixinvraw,spike.channelposition,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
+        spike.templates = temps; % nTemplates x nTimePoints x nChannels, used to do spike sorting
+        spike.templatesposition = tempcoords; % position from template spatial spread
+        spike.templatesamplitude = tempAmps; % mean amplitude of spikes from a unwhiten, scaled template
+        spike.templateswaveform = templates_maxwaveform; % unwhiten waveform
+        spike.templateswaveformfeature = templates_waveform_feature;
+        
+        spike.time = NeuroAnalysis.Base.sample2time(double(spikeTimes),spike.fs,spike.secondperunit);
+        spike.template = int64(spikeTemplates)+1;
+        spike.templatescale = tempScalingAmps;
+        spike.amplitude = spikeAmps; % scaled template amplitude
+        
+        spike.cluster = int64(clu)+1;
+        spike.clusterid = unique(spike.cluster,'sorted');
+        spike.clustergood = cgsKS; % match the already sorted cluster ids
+        
+        % Cluster may not map 1:1 to template, so we extract cluster waveform from data and get waveform feature
+        if exist(spike.datapath,'file') && getclufeature
+            mmapbinfile = memmapfile(spike.datapath,'Format',{'int16',[spike.nch,spike.nsample],'ap'});
+            % binfile is whiten data, so use raw whiteningmatrixinv
+            [cluwaveforms,clucoords,clumaxwaveform,cluwaveformfeature] = NeuroAnalysis.Base.clusterfeature(mmapbinfile,...
+                double(spikeTimes),spike.cluster,spike.clusterid,spike.chanmap,spike.whiteningmatrixinvraw,spike.channelposition,chmaskradius,spike.fs);
+            spike.clusterwaveforms = cluwaveforms; % mean waveform on channels
+            spike.clusterposition = clucoords; % position from cluster spatial spread
+            spike.clusterwaveform = clumaxwaveform; % mean waveform on max amplitude channel
+            spike.clusterwaveformfeature = cluwaveformfeature;
+        end
 end
-spike.qcversion='Phy';
+spike.qcversion='phy';
 spike.qc = [];
 %% Merge to Dataset
 fieldtomerge = ['spike',spike.imecindex,'_',spike.sort_from];

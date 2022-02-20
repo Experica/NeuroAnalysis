@@ -1,7 +1,15 @@
-function [swf] = spikefeature2(waveforms,chmask,maxch,chcoords,fs)
+function [swf] = spikefeature2(waveforms,amps,maxch,chcoords,fs)
 %SPIKEFEATURE2 2D Spike Waveforms Feature
 %   Detailed explanation goes here
 
+% percentage of max amplitude to threshold spatial spread
+spreadampthr = 0.15;
+% max possible spread radius(um)
+maxspreadradius = 250;
+
+maxamp = amps(maxch);
+chtomaxch = chcoords-chcoords(maxch,:);
+chmask = (amps >= maxamp*spreadampthr) & (arrayfun(@(i)norm(chtomaxch(i,:)),1:size(chtomaxch,1)) <= maxspreadradius);
 maskedchs = find(chmask);
 maxmaskedch = find(maskedchs==maxch);
 
@@ -12,7 +20,7 @@ end
 chwavefeature = [chwavefeature{:}];
 
 
-dtomaxch = chcoords(chmask,:)-chcoords(maxch,:);
+dtomaxch = chtomaxch(chmask,:);
 upchidx = dtomaxch(:,2)>=0;
 downchidx = dtomaxch(:,2)<=0;
 % 2D spatial spread centered at max amplitude channel

@@ -1,9 +1,6 @@
-function [tempcoords,spikeAmps,tempAmps,templates_maxwaveform_chidx,templates_maxwaveform,templates_waveform_feature] = templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,fs)
+function [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_waveform_feature] = templatefeature(temps,winv,coords,chmaskradius,spikeTemplates,tempScalingAmps,fs)
 %TEMPLATEFEATURE Summary of this function goes here
 %   Detailed explanation goes here
-
-% percentage of max amplitude to threshold spatial spread
-spreadampthr = 0.15;
 
 tempsUnW = zeros(size(temps));
 for t = 1:size(temps,1)
@@ -39,15 +36,13 @@ tempAmps(tids+1) = ta; % because ta only has entries for templates that had at l
 tempAmps = tempAmps'; % for consistency, make first dimension template number
 
 
-spreadchmask = tempChanAmps >= tempAmpsUnscaled*spreadampthr;
 templates_maxwaveform = zeros(size(temps,1),size(temps,2));
 templates_waveform_feature = cell(size(temps,1),1);
 for t = 1:size(temps,1)
     templates_maxwaveform(t,:) = tempsUnW(t,:,maxch(t)); % waveform from largest amplitude
-    templates_waveform_feature{t} = NeuroAnalysis.Base.spikefeature2(squeeze(tempsUnW(t,:,:)),spreadchmask(t,:),maxch(t),coords,fs);
+    templates_waveform_feature{t} = NeuroAnalysis.Base.spikefeature2(squeeze(tempsUnW(t,:,:)),tempChanAmps(t,:),maxch(t),coords,fs);
 end
 templates_waveform_feature = [templates_waveform_feature{:}];
-templates_maxwaveform_chidx = maxch;
 
 end
 

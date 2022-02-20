@@ -3,7 +3,7 @@ function [swf] = spikefeature(waveform,fs)
 %   Detailed explanation goes here
 
 minfs = 4.8e5; % 480kHz of 2.1us resolution
-slopedt = 0.0001; % 0.1ms time interval to fit slope
+slopedt = 0.00015; % 0.15ms time interval to fit slope
 if fs < minfs
     n = length(waveform);
     waveform = csaps(1:n,double(waveform),[],1:(fs/minfs):n);
@@ -33,6 +33,8 @@ nttrough=min(ntwaveform);
 % width at half trough
 lefti = searchvalueindex(troughi,-1,1,nttrough/2);
 righti = searchvalueindex(troughi,1,n,nttrough/2);
+lhtw = (troughi-lefti)/fs;
+rhtw = (righti-troughi)/fs;
 htw = (righti-lefti)/fs;
 % repolarization rate
 tsi = troughi+slopei;
@@ -47,6 +49,8 @@ nppeak=max(npwaveform);
 % width at half peak
 lefti = searchvalueindex(peaki,-1,1,nppeak/2);
 righti = searchvalueindex(peaki,1,n,nppeak/2);
+lhpw = (peaki-lefti)/fs;
+rhpw = (righti-peaki)/fs;
 hpw = (righti-lefti)/fs;
 % recovery rate
 psi = peaki+slopei;
@@ -61,7 +65,11 @@ swf.peaktroughratio = ptr;
 swf.duration = sd;
 swf.ttrough = troughi/fs; % trough time
 
+swf.lefthalftroughwidth = lhtw;
+swf.righthalftroughwidth = rhtw;
 swf.halftroughwidth = htw;
+swf.lefthalfpeakwidth = lhpw;
+swf.righthalfpeakwidth = rhpw;
 swf.halfpeakwidth = hpw;
 swf.repolarrate = rprate;
 swf.recoverrate = rcrate;
