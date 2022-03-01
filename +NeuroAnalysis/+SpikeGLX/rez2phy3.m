@@ -202,7 +202,7 @@ if ~isempty(savePath)
         fclose(fid);
     end
     % save figures
-    for n=1:4
+    for n=1:length(findobj('type','figure'))
         f = figure(n);
         exportgraphics(f,fullfile(savePath,[num2str(n),'.png']));
         close(f);

@@ -6,7 +6,7 @@ if nargin==1
     secondperunit=1;
 end
 
-chmaskradius = 55; % radius(um) within which the templates height are used to estimate position
+chmaskradius = 65; % radius(um) within which the templates height are used to estimate position
 
 W = gather(single(rez.Wphy));
 U = gather(single(rez.U));

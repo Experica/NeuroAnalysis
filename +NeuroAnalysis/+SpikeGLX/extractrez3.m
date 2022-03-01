@@ -6,7 +6,7 @@ if nargin==1
     secondperunit=1;
 end
 
-chmaskradius = 55; % radius(um) within which the templates height are used to estimate position
+chmaskradius = 65; % radius(um) within which the templates height are used to estimate position
 
 W = gather(single(rez.W));
 U = gather(single(rez.U));
@@ -68,12 +68,8 @@ spike.cluster = spike.template;
 spike.clusterid = unique(spike.cluster);
 spike.clustergood = rez.good;
 
-
 NeuroAnalysis.Visualization.plotdriftmap(spike.time,spike.amplitude,spike.templatesposition(spike.template,2));
-
-
 spike.qcversion = 'kilosort3';
 spike.qc = [];
-spike=[];
 end
 

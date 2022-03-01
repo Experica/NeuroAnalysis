@@ -6,7 +6,7 @@ p = inputParser;
 addRequired(p,'phydir');
 addParameter(p,'excludenoise',true)
 addParameter(p,'loadpc',false)
-addParameter(p,'chmaskradius',55) % radius(um) within which the templates height are used to estimate position
+addParameter(p,'chmaskradius',65) % radius(um) within which the templates height are used to estimate position
 addParameter(p,'getclufeature',true)
 addParameter(p,'exportdir','')
 parse(p,phydir,varargin{:});

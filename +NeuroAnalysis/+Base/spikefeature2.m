@@ -5,7 +5,7 @@ function [swf] = spikefeature2(waveforms,amps,maxch,chcoords,fs)
 % percentage of max amplitude to threshold spatial spread
 spreadampthr = 0.15;
 % max possible spread radius(um)
-maxspreadradius = 250;
+maxspreadradius = 300;
 
 maxamp = amps(maxch);
 chtomaxch = chcoords-chcoords(maxch,:);

@@ -101,7 +101,7 @@ if iscell(dataset)
         kcdataset.(d).meta = kdatasets{1}.(d).meta;
         kcdataset.(d).meta.fileName = concatfilepath;
         kcdataset.(d).meta.nFileSamp = sum(binfilensample);
-        kcdataset.(d).meta.fromcatgt = isconcatmetafile; % CatGT produce meta file, while concat above does not
+        kcdataset.(d).meta.catgt = isconcatmetafile; % CatGT produce meta file, while concat above does not
         % demuxed CAR could help to remove very fast transient noise, and then CAR in kilosort could further reduce other noise.
         kcdataset.car = 1;
         % time range [t(i), t(i+1)) for each file in the concat file
@@ -142,9 +142,8 @@ disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(d).meta.fileNam
 ops.fbinary = dataset.(d).meta.fileName;
 
 % if the binary file is the output of CatGT, then filtering and CAR have already been applied.
-ops.fbinaryfromcatgt = false;
-if isfield(dataset.(d).meta,'fromcatgt')
-    ops.fbinaryfromcatgt = dataset.(d).meta.fromcatgt;
+if isfield(dataset.(d).meta,'catgt')
+    ops.filtering = ~dataset.(d).meta.catgt;
 end
 
 % the binary file folder
@@ -193,30 +192,6 @@ if isfield(dataset,'car')
     ops.CAR = dataset.car;
 end
 
-switch kilosortversion
-    case '2'
-        % minimum firing rate on a "good" channel (0 to skip)
-        ops.minfr_goodchannels = 1/60;
-        % minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
-        ops.minFR = 1/60;
-        % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
-        ops.Th = [12 6];
-        % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
-        ops.lam = 15;
-        % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
-        ops.AUCsplit = 0.9;
-        % number of samples to average over (annealed from first to second value)
-        ops.momentum = [20 400];
-    case '3'
-        % spatial smoothness constant for registration
-        ops.sig = 20;
-        % blocks for registration. 0 turns it off, 1 does rigid registration. Replaces "datashift" option.
-        ops.nblocks = 8;
-        
-        ops.Th = [10 10];
-        ops.lam = 20;
-end
-
 %% danger, changing these settings can lead to fatal errors
 
 % options for determining PCs
@@ -237,6 +212,20 @@ ops.useRAM              = 0; % not yet available
 %% run all the steps of kilosort
 switch kilosortversion
     case '2'
+        % minimum firing rate on a "good" channel (0 to skip)
+        ops.minfr_goodchannels = 1/60;
+        % minimum spike rate (Hz), if a cluster falls below this for too long it gets removed
+        ops.minFR = 1/60;
+        % threshold on projections (like in Kilosort1, can be different for last pass like [10 4])
+        ops.Th = [12 6];
+        % how important is the amplitude penalty (like in Kilosort1, 0 means not used, 10 is average, 50 is a lot)
+        ops.lam = 15;
+        % splitting a cluster at the end requires at least this much isolation for each sub-cluster (max = 1)
+        ops.AUCsplit = 0.9;
+        % number of samples to average over (annealed from first to second value)
+        ops.momentum = [20 400];
+        
+        
         % preprocess data to create temp_wh.dat
         rez = preprocessDataSub(ops);
         % time-reordering as a function of drift
@@ -255,6 +244,18 @@ switch kilosortversion
         % decide on cutoff
         rez = set_cutoff(rez);
     case '3'
+        % spatial smoothness constant for registration
+        ops.sig = 20;
+        % blocks for registration. 0 turns it off, 1 does rigid registration. Replaces "datashift" option.
+        ops.nblocks = 7;
+        ops.Th = [10 10];
+        ops.lam = 20;
+        
+        %         ops.NT                  = 96*1024 + ops.ntbuff; % ~3.3sec batch
+        %         ops.nskip               = 16;
+        %         ops.nSkipCov            = 16;
+        
+        
         rez                = preprocessDataSub(ops);
         rez                = datashift2(rez, 1);
         [rez, st3, tF]     = extract_spikes(rez);
@@ -271,9 +272,10 @@ disp(['KiloSort ',kilosortversion,' Spike Sorting:    ',dataset.(d).meta.fileNam
 disp('Extract Spike Sorting Result    ...');
 switch kilosortversion
     case '2'
-        spike = [];%NeuroAnalysis.SpikeGLX.extractrez2(rez,dataset.secondperunit);
+        spike = NeuroAnalysis.SpikeGLX.extractrez2(rez,dataset.secondperunit);
     case '3'
         spike = NeuroAnalysis.SpikeGLX.extractrez3(rez,dataset.secondperunit);
+        spike = [];
 end
 disp('Extract Spike Sorting Result    done.');
 if ~isempty(spike)
