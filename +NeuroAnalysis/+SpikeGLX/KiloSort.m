@@ -251,9 +251,9 @@ switch kilosortversion
         ops.Th = [10 10];
         ops.lam = 20;
         
-        %         ops.NT                  = 96*1024 + ops.ntbuff; % ~3.3sec batch
-        %         ops.nskip               = 16;
-        %         ops.nSkipCov            = 16;
+        ops.NT                  = 96*1024 + ops.ntbuff; % ~3.3sec batch
+        ops.nskip               = 16;
+        ops.nSkipCov            = 16;
         
         
         rez                = preprocessDataSub(ops);
