@@ -31,9 +31,9 @@ spikeAmps = tempAmpsUnscaled(spikeTemplates+1).*tempScalingAmps;
 % take the average of all spike amps to get actual template amps (since
 % tempScalingAmps are equal mean for all templates)
 ta = NeuroAnalysis.Base.clusterAverage(spikeTemplates+1, spikeAmps);
+tempAmps = zeros(size(temps,1),1);
 tids = unique(spikeTemplates);
-tempAmps(tids+1) = ta; % because ta only has entries for templates that had at least one spike
-tempAmps = tempAmps'; % for consistency, make first dimension template number
+tempAmps(tids+1) = ta;
 
 
 templates_maxwaveform = zeros(size(temps,1),size(temps,2));

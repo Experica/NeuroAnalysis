@@ -52,6 +52,7 @@ if ~exist(phydir,'dir')
     warning('No Phy Dir:    %s', phydir);
     return
 end
+disp('Prepare Phy Data    ...');
 disp(['Reading Phy Dir:    ',phydir,'    ...']);
 spike = NeuroAnalysis.Phy.loadphyparam(fullfile(phydir, 'params.py'));
 spike.fs = spike.sample_rate;
@@ -117,7 +118,7 @@ end
 if exist(fullfile(phydir, 'cluster_KSLabel.tsv'),'file')
     cgsKSFile = fullfile(phydir, 'cluster_KSLabel.tsv');
 end
-% every cluster labeled by Kilosort and Phy
+% clusters labeled by Kilosort
 iscgKS = ~isempty(cgsKSFile);
 if iscgKS
     [cidsKS, cgsKS] = readClusterGroupsCSV(cgsKSFile); % cluster ids already sorted
@@ -132,12 +133,21 @@ end
 if exist(fullfile(phydir, 'cluster_group.tsv'),'file')
     cgsFile = fullfile(phydir, 'cluster_group.tsv');
 end
-% clusters labeled by Phy operator
+% clusters labeled by Phy
 iscg = ~isempty(cgsFile);
 if iscg
     [cids, cgs] = readClusterGroupsCSV(cgsFile); % cluster ids already sorted
     
-    % noise clusters are labeled by Phy operator
+    % join Phy labels and KS labels, overwirte with Phy labels if both labels exist
+    if iscgKS
+        [ucidsKS,uksi] = setdiff(cidsKS,cids);
+        cids = [cids,ucidsKS];
+        cgs = [cgs,cgsKS(uksi)];
+        [cids,iorder]=sort(cids);
+        cgs=cgs(iorder);
+    end
+    
+    % noise clusters are labeled only by Phy
     if excludenoise
         noisecluidx = cgs==0;
         noisecluid = cids(noisecluidx);
@@ -146,23 +156,13 @@ if iscg
         cids = cids(~noisecluidx);
         vsi = ~ismember(clu, noisecluid);
         if loadpc
-            spike.pcFeat = pcFeat(vsi, :,:);
+            spike.pcFeat = pcFeat(vsi,:,:);
             spike.pcFeatInd = pcFeatInd(vsi,:);
         end
         spikeTimes = spikeTimes(vsi);
         spikeTemplates = spikeTemplates(vsi);
         tempScalingAmps = tempScalingAmps(vsi);
         clu = clu(vsi);
-        
-        % merge Phy labels into KS labels
-        if iscgKS
-            noisecluksidx = ismember(cidsKS, noisecluid);
-            cgsKS = cgsKS(~noisecluksidx);
-            cidsKS = cidsKS(~noisecluksidx);
-            for i=1:length(cids)
-                cgsKS(cids(i)==cidsKS) = cgs(i);
-            end
-        end
     end
 end
 disp(['Reading Phy Dir:    ',phydir,'    Done.']);
@@ -174,7 +174,7 @@ switch (spike.sort_from)
             = NeuroAnalysis.Base.templatefeature(temps,spike.whiteningmatrixinv,spike.channelposition,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
         spike.templates = temps; % nTemplates x nTimePoints x nChannels, used to do spike sorting
         spike.templatesposition = tempcoords; % position from template spatial spread
-        spike.templatesamplitude = tempAmps; % mean amplitude of spikes from a unwhiten, scaled template
+        spike.templatesmeanamplitude = tempAmps; % mean amplitude of spikes from a unwhiten, scaled template
         spike.templateswaveform = templates_maxwaveform; % unwhiten waveform
         spike.templateswaveformfeature = templates_waveform_feature;
         
@@ -185,7 +185,7 @@ switch (spike.sort_from)
         
         spike.cluster = int64(clu)+1;
         spike.clusterid = unique(spike.cluster,'sorted');
-        spike.clustergood = cgsKS; % match the already sorted cluster ids
+        spike.clustergood = cgs; % match the already sorted cluster ids
         
         % Cluster may not map 1:1 to template, so we extract cluster waveform from data and get waveform feature
         [~,fn,fe] = fileparts(spike.datapath);
@@ -207,19 +207,19 @@ switch (spike.sort_from)
         [tempcoords,spikeAmps,tempAmps,templates_maxwaveform,templates_waveform_feature]...
             = NeuroAnalysis.Base.templatefeature(temps,spike.whiteningmatrixinvraw,spike.channelposition,chmaskradius,spikeTemplates,tempScalingAmps,spike.fs);
         spike.templates = temps; % nTemplates x nTimePoints x nChannels, used to do spike sorting
-        spike.templatesposition = tempcoords; % position from template spatial spread
-        spike.templatesamplitude = tempAmps; % mean amplitude of spikes from a unwhiten, scaled template
+        spike.templatesposition = tempcoords; % nTemplates x 2[x y] positions from template spatial spread
+        spike.templatesmeanamplitude = tempAmps; % mean amplitude of spikes with scaled unwhiten amplitude
         spike.templateswaveform = templates_maxwaveform; % unwhiten waveform
         spike.templateswaveformfeature = templates_waveform_feature;
         
         spike.time = NeuroAnalysis.Base.sample2time(double(spikeTimes),spike.fs,spike.secondperunit);
         spike.template = int64(spikeTemplates)+1;
-        spike.templatescale = tempScalingAmps;
-        spike.amplitude = spikeAmps; % scaled template amplitude
+        spike.templatescale = tempScalingAmps; % scaling factor for each spike
+        spike.amplitude = spikeAmps; % from scaled unwhiten template for each spike
         
         spike.cluster = int64(clu)+1;
         spike.clusterid = unique(spike.cluster,'sorted');
-        spike.clustergood = cgsKS; % match the already sorted cluster ids
+        spike.clustergood = cgs; % match the already sorted cluster ids
         
         % Cluster may not map 1:1 to template, so we extract cluster waveform from data and get waveform feature
         if exist(spike.datapath,'file') && getclufeature
@@ -252,6 +252,7 @@ if length(dspath)>1
 else
     merge2dataset(dspath{1},fieldtomerge,spike);
 end
+disp('Prepare Phy Data:    Done.');
 % data have been merged, no need to export anymore.
 dataset.earlyfinish = true;
 %%
