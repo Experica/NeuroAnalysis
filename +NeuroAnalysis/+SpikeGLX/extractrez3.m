@@ -69,7 +69,6 @@ spike.clusterid = unique(spike.cluster);
 spike.clustergood = rez.good;
 
 NeuroAnalysis.Visualization.plotdriftmap(spike.time,spike.amplitude,spike.templatesposition(spike.template,2));
-spike.qcversion = 'kilosort3';
-spike.qc = [];
+
 end
 

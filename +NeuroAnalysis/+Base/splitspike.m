@@ -9,7 +9,7 @@ sspike.template = spike.template(si);
 sspike.templatescale = spike.templatescale(si);
 sspike.amplitude = spike.amplitude(si);
 
-% only info of the splited clusters are included
+%% only info of the splited clusters are included
 sspike.cluster = spike.cluster(si);
 sspike.clusterid = unique(sspike.cluster,'sorted');
 cidx = arrayfun(@(x)find(x==spike.clusterid),sspike.clusterid);
@@ -22,5 +22,6 @@ if isfield(spike,'clusterwaveforms')
     sspike.clusterwaveformfeature = spike.clusterwaveformfeature(cidx);
 end
 
+sspike.qm = spike.qm(cidx);
 end
 

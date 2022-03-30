@@ -46,7 +46,7 @@ end
 cluChanAmps = squeeze(max(cluwaveformsUnW,[],2))-squeeze(min(cluwaveformsUnW,[],2));
 
 % The cluster amplitude is the amplitude of its largest channel
-[~,maxch] = max(cluChanAmps,[],2);
+[maxamp,maxch] = max(cluChanAmps,[],2);
 
 % soma position as the cluster amplitude weighted channel positions(center of mass) within a radius centered on max cluster amplitude channel
 clucoords = zeros(size(cluwaveforms,1),size(coords,2));

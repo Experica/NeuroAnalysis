@@ -8,7 +8,6 @@ addParameter(p,'excludenoise',true)
 addParameter(p,'loadpc',false)
 addParameter(p,'chmaskradius',65) % radius(um) within which the templates height are used to estimate position
 addParameter(p,'getclufeature',true)
-addParameter(p,'isipercentile',10) % percentile of isi cumulative distribution
 addParameter(p,'exportdir','')
 parse(p,phydir,varargin{:});
 phydir = p.Results.phydir;
@@ -16,7 +15,6 @@ excludenoise = p.Results.excludenoise;
 loadpc = p.Results.loadpc;
 chmaskradius = p.Results.chmaskradius;
 getclufeature = p.Results.getclufeature;
-isipercentile = p.Results.isipercentile;
 exportdir = p.Results.exportdir;
 %%
     function [cids, cgs] = readClusterGroupsCSV(filename)
@@ -232,16 +230,12 @@ switch (spike.sort_from)
             spike.clusterwaveforms = cluwaveforms; % mean waveform on channels
             spike.clusterposition = clucoords; % position from cluster spatial spread
             spike.clusterwaveform = clumaxwaveform; % mean waveform on max amplitude channel
-            
-            for i=1:length(spike.clusterid)
-                isi = diff(sort(spike.time(spike.cluster==spike.clusterid(i))));
-                cluwaveformfeature(i).pisi = prctile(isi,isipercentile);
-            end
             spike.clusterwaveformfeature = cluwaveformfeature;
         end
 end
-spike.qcversion='phy';
-spike.qc = [];
+%% Quality Metrics
+spike = NeuroAnalysis.Base.spikequality(spike);
+
 %% Merge to Dataset
 fieldtomerge = ['spike',spike.imecindex,'_',spike.sort_from];
 dspath = split(spike.dataset_path,', ');

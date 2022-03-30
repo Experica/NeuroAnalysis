@@ -63,7 +63,5 @@ spike.cluster = spike.template;
 spike.clusterid = unique(spike.cluster);
 spike.clustergood = rez.good;
 
-spike.qcversion = 'kilosort2';
-spike.qc = [];
 end
 

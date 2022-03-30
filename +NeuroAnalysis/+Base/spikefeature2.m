@@ -5,7 +5,9 @@ function [swf] = spikefeature2(waveforms,amps,maxch,chcoords,fs)
 % percentage of max amplitude to threshold spatial spread
 spreadampthr = 0.15;
 % max possible spread radius(um)
-maxspreadradius = 300;
+maxspreadradius = 350;
+% left/right distance(um) to max channel, within which are considered for up/down propagation
+updownhalfwidth = 20;
 
 maxamp = amps(maxch);
 chtomaxch = chcoords-chcoords(maxch,:);
@@ -21,8 +23,8 @@ chwavefeature = [chwavefeature{:}];
 
 
 dtomaxch = chtomaxch(chmask,:);
-upchidx = dtomaxch(:,2)>=0;
-downchidx = dtomaxch(:,2)<=0;
+upchidx = dtomaxch(:,2)>=0 & abs(dtomaxch(:,1)) < updownhalfwidth;
+downchidx = dtomaxch(:,2)<=0 & abs(dtomaxch(:,1)) < updownhalfwidth;
 % 2D spatial spread centered at max amplitude channel
 upspread = max(dtomaxch(:,2));
 downspread = min(dtomaxch(:,2));
