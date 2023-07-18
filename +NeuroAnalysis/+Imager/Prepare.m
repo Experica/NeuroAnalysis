@@ -59,40 +59,90 @@ height = dataset.meta.ImageFormat.Height;
 dataset.meta.ImageFormat.Width = int64(dataset.meta.ImageFormat.Width);
 dataset.meta.ImageFormat.Height = int64(dataset.meta.ImageFormat.Height);
 pixfmt = dataset.meta.ImageFormat.PixelFormat;
-file = arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.',fmt])),'uniformoutput',0);
-ts = cellfun(@(x)regexp(x,[filename,'-Epoch(\d*)-Frame(\d*)[.]',fmt],'tokens','once'),file,'uniformoutput',0);
-epoch = cellfun(@(x)str2double(x{1}),ts);
-frame = cellfun(@(x)str2double(x{2}),ts);
-file = cellfun(@(x)fullfile(filedir,x),file,'uniformoutput',0);
 
-isnaturalorder=true;
-checkorder = @(x) all(arrayfun(@(i)i==1,diff(unique(x,'sorted'))));
-if ~checkorder(epoch)
-    warning([filename, ':    Epoch Not Incremental by 1.']);
-    isnaturalorder=false;
-end
-if ~checkorder(frame)
-    warning([filename, ':    Frame Not Incremental by 1.']);
-    isnaturalorder=false;
-end
-dataset.epochframeinorder = isnaturalorder;
-
-ftable = table(file,epoch,frame);
-ftable = sortrows(ftable,'frame');
-nfile = size(ftable,1);
-
-if isnaturalorder
-    ue = unique(epoch,'sorted');
-    ne = length(ue);
-    es = cell(ne,1);
-    for i=1:ne
-        es{i} = ftable.file(ftable.epoch==ue(i));
+files = dir(filedir);
+diridx = arrayfun(@(x)x.isdir && ~strcmp(x.name,'.') && ~strcmp(x.name,'..'),files);
+if any(diridx) % epochs saved in subfolders
+    epochnames = arrayfun(@(x)x.name,files(diridx),'uniformoutput',0);
+    ts = cellfun(@(x)regexp(x,'Epoch(\d*)','tokens','once'),epochnames,'uniformoutput',0);
+    epochs = cellfun(@(x)str2double(x{1}),ts);
+    [epochs,ei]=sort(epochs);
+    epochnames = epochnames(ei);
+    
+    nepoch = length(epochnames);
+    epochfiles = cell(nepoch,1);
+    epochframes = cell(nepoch,1);
+    for i=1:nepoch
+        files = dir(fullfile(filedir,epochnames{i},[filename,'*.',fmt]));
+        names = arrayfun(@(x)x.name,files,'uniformoutput',0);
+        ts = cellfun(@(x)regexp(x,[filename,'-Frame(\d*)[.]',fmt],'tokens','once'),names,'uniformoutput',0);
+        frames = cellfun(@(x)str2double(x{1}),ts);
+        paths = cellfun(@(x)fullfile(filedir,epochnames{i},x),names,'uniformoutput',0);
+        [frames,fi] = sort(frames);
+        epochframes{i}=frames;
+        epochfiles{i}=paths(fi);
     end
-    dataset.imagenepoch = int64(ne);
-    dataset.imagefile = es;
-else
-    dataset.imagefile = table2struct(ftable);
+    
+    isnaturalorder=true;
+    if ~all(arrayfun(@(i)i==1,diff(epochs)))
+        warning([filename, ':    Epoch Not Incremental by 1']);
+        isnaturalorder=false;
+    end
+    for i=1:nepoch
+        if ~all(arrayfun(@(i)i==1,diff(epochframes{i})))
+            warning([filename, ':    Frame Not Incremental by 1 in Epoch ', num2str(epochs(i))]);
+            isnaturalorder=false;
+        end
+    end
+    dataset.epochframeinorder = isnaturalorder;
+    
+    nfile = sum(cellfun(@(x)length(x),epochframes));
+    dataset.imagenepoch = int64(nepoch);
+    if isnaturalorder
+        dataset.imagefile = epochfiles;
+    else
+        dataset.imagefile.epoch = epochnames;
+        dataset.imagefile.epochframe = epochframes;
+        dataset.imagefile.epochfile = epochfiles;
+    end
+else % epochs are flatten saving
+    file = arrayfun(@(x)x.name,dir(fullfile(filedir,[filename,'*.',fmt])),'uniformoutput',0);
+    ts = cellfun(@(x)regexp(x,[filename,'-Epoch(\d*)-Frame(\d*)[.]',fmt],'tokens','once'),file,'uniformoutput',0);
+    epochnames = cellfun(@(x)str2double(x{1}),ts);
+    frame = cellfun(@(x)str2double(x{2}),ts);
+    file = cellfun(@(x)fullfile(filedir,x),file,'uniformoutput',0);
+    
+    isnaturalorder=true;
+    checkorder = @(x) all(arrayfun(@(i)i==1,diff(unique(x,'sorted'))));
+    if ~checkorder(epochnames)
+        warning([filename, ':    Epoch Not Incremental by 1.']);
+        isnaturalorder=false;
+    end
+    if ~checkorder(frame)
+        warning([filename, ':    Frame Not Incremental by 1.']);
+        isnaturalorder=false;
+    end
+    dataset.epochframeinorder = isnaturalorder;
+    
+    ftable = table(file,epochnames,frame);
+    ftable = sortrows(ftable,'frame');
+    nfile = size(ftable,1);
+    
+    if isnaturalorder
+        ue = unique(epochnames,'sorted');
+        ne = length(ue);
+        es = cell(ne,1);
+        for i=1:ne
+            es{i} = ftable.file(ftable.epoch==ue(i));
+        end
+        dataset.imagenepoch = int64(ne);
+        dataset.imagefile = es;
+    else
+        dataset.imagefile = table2struct(ftable);
+    end
 end
+
+
 
 %% Read Data
 if isreadall && isnaturalorder
