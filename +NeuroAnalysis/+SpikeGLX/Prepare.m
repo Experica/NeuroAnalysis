@@ -92,7 +92,8 @@ if ~isempty(dataset)
             warning([upper(d),' Stream Binaray File: ',meta.fileName,' not found.']);
             meta.fileName = '';
         end
-        dataset.(d).meta = NeuroAnalysis.SpikeGLX.parsemeta(meta,d,probeinfo);
+        meta = NeuroAnalysis.SpikeGLX.parsemeta(meta,d,probeinfo);
+        dataset.(d).meta = meta;
         
         % parse digital data
         if ~startsWith(d,'lf') && ~isempty(meta.fileName)

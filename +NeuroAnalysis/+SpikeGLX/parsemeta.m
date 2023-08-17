@@ -55,7 +55,7 @@ if strcmp(meta.typeThis,'imec')
                 probesn = meta.imDatPrb_sn;
                 rofmt = '(%d %d %d %d %d %d';
             end
-            % imec readout table
+            % imec readout table for all acquiring channels
             C = textscan(meta.imroTbl, rofmt, ...
                 'EndOfLine', ')', 'HeaderLines', 1 );
             meta.roch = int64(cell2mat(C(1)));
@@ -103,6 +103,22 @@ if strcmp(meta.typeThis,'imec')
         meta.nshanksaved = int64(length(unique(meta.savedshanks)));
         meta.ncolsaved = int64(length(unique(meta.savedcols)));
         meta.nrowsaved = int64(length(unique(meta.savedrows)));
+    elseif isfield(meta,'snsGeomMap')
+        header = int64(str2double(split(regexp(meta.snsGeomMap,'([A-Z_,0-9]*)','match','once'),',')));
+        meta.nshank = header(2);
+        meta.shankspacing = header(3);
+        meta.shankwidth = header(4);
+        C = textscan(meta.snsGeomMap, '(%d:%d:%d:%*s', ...
+            'EndOfLine', ')', 'HeaderLines', 1 );
+        meta.savedshanks = int64(cell2mat(C(1))+1);
+        meta.savedxs = int64(cell2mat(C(2))+1);
+        meta.savedzs = int64(cell2mat(C(3))+1);
+        meta.nshanksaved = int64(length(unique(meta.savedshanks)));
+        meta.ncolsaved = int64(length(unique(meta.savedxs)));
+        if meta.probeversion <= 1
+            meta.ncolsaved = meta.ncolsaved /2;
+        end
+        meta.nrowsaved = int64(length(unique(meta.savedzs)));
     end
     meta.syncch = 6+1; % fixed bit 6 for imec sync in PXI system
 else % nidq
