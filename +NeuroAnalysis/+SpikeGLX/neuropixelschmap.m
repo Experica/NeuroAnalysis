@@ -9,14 +9,20 @@ if meta.probeversion <= 1
     chmap.chanMap0ind = double(meta.robank*meta.acqApLfSy(1) + meta.roch);
     chmap.chanMap = chmap.chanMap0ind+1;
     dx = meta.probespacing(1);dy=meta.probespacing(2);
-    cols = double(meta.savedcols);rows = double(meta.savedrows);
-    
-    % checkboard
-    chmap.xcoords = arrayfun(@(r,c)(dx/2 + (c-1)*dx) - abs(mod(r,2)-1)*dx/2,rows,cols);
-    chmap.ycoords = (rows-1)*dy;
-    % regular
-    %             chmap.xcoords = (cols-1)*dx;
-    %             chmap.ycoords = (rows-1)*dy;
+    if isfield(meta,'savedcols')
+        cols = double(meta.savedcols);rows = double(meta.savedrows);
+        
+        % checkboard
+        chmap.xcoords = arrayfun(@(r,c)(dx/2 + (c-1)*dx) - abs(mod(r,2)-1)*dx/2,rows,cols);
+        chmap.ycoords = (rows-1)*dy;
+        % regular
+        %             chmap.xcoords = (cols-1)*dx;
+        %             chmap.ycoords = (rows-1)*dy;
+    elseif isfield(meta,'savedxs')
+        % checkboard
+        chmap.xcoords = meta.savedxs-11;
+        chmap.ycoords = meta.savedzs;
+    end
 end
 
 end

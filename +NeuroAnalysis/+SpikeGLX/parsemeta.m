@@ -111,8 +111,8 @@ if strcmp(meta.typeThis,'imec')
         C = textscan(meta.snsGeomMap, '(%d:%d:%d:%*s', ...
             'EndOfLine', ')', 'HeaderLines', 1 );
         meta.savedshanks = int64(cell2mat(C(1))+1);
-        meta.savedxs = int64(cell2mat(C(2))+1);
-        meta.savedzs = int64(cell2mat(C(3))+1);
+        meta.savedxs = double(cell2mat(C(2)));
+        meta.savedzs = double(cell2mat(C(3)));
         meta.nshanksaved = int64(length(unique(meta.savedshanks)));
         meta.ncolsaved = int64(length(unique(meta.savedxs)));
         if meta.probeversion <= 1

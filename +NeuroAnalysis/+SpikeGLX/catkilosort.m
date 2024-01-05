@@ -1,7 +1,7 @@
 dataexportroot='Y:/';
 meta = NeuroAnalysis.IO.MetaTable(fullfile(dataexportroot,'metadata.mat'));
 
-tests = meta.query('Subject_ID','AG1','RecordSession','V1','RecordSite','ODL1','sourceformat','SpikeGLX').Tests;
+tests = meta.query('Subject_ID','AG5','RecordSession','V1','RecordSite','1R','sourceformat','SpikeGLX').Tests;
 dataset = arrayfun(@(t)fullfile(dataexportroot,t.files),tests);
 
 % concat kilosort of all CondTests of a RecordSite
@@ -17,15 +17,24 @@ imin = filtfilt(d,imin);
 
 
 
-% prepare a new dataset for a Allen Neuropixels probe binary file
-anpdataset = struct;
+%% kilosort catgt flash segment for each allen probe
+rootdir = 'E:\SpikeGLXData\allen-brain-observatory\visual-coding-neuropixels';
+cachedir = fullfile(rootdir,'ecephys-cache');
+rawdatadir = fullfile(rootdir,'raw-data');
 d = 'ap0';
-anpdataset.secondperunit = 0.001; % ms
-anpdataset.filepath = '';
-anpdataset.(d).meta = NeuroAnalysis.SpikeGLX.readmeta('X:\allen-brain-observatory\visual-coding-neuropixels\raw-data\839068429\868929138\flash_g0_t0.imec0.ap.meta');
+session_id = '839068429';
+probe_id = '868929142';
+probedir = fullfile(rawdatadir,session_id,probe_id);
+
+% prepare a dataset for a probe binary file
+anpdataset = struct;
+anpdataset.imecindex = 0;
+anpdataset.secondperunit = 1; % sec
+anpdataset.filepath = fullfile(probedir,'flash.mat');
+anpdataset.(d).metafile = fullfile(probedir,'flash_g0_tcat.imec0.ap.meta');
+anpdataset.(d).meta = NeuroAnalysis.SpikeGLX.readmeta(anpdataset.(d).metafile);
 anpdataset.(d).meta = NeuroAnalysis.SpikeGLX.parsemeta(anpdataset.(d).meta);
-anpdataset.(d).meta.catgt = 0; % CatGT produce meta file, while concat above does not
-% demuxed CAR could help to remove very fast transient noise, and then CAR in kilosort could further reduce other noise.
-anpdataset.car = 1;
+anpdataset.(d).meta.catgt = 1; % CatGT produced
+save(anpdataset.filepath,'-struct','anpdataset','-v7.3');
 
 anpdataset = NeuroAnalysis.SpikeGLX.KiloSort(anpdataset,d,'3');

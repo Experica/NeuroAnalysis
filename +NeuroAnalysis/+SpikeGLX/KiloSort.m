@@ -274,7 +274,7 @@ switch kilosortversion
     case '2'
         spike = NeuroAnalysis.SpikeGLX.extractrez2(rez,dataset.secondperunit);
     case '3'
-        spike = NeuroAnalysis.SpikeGLX.extractrez3(rez,dataset.secondperunit);
+%         spike = NeuroAnalysis.SpikeGLX.extractrez3(rez,dataset.secondperunit);
         spike = [];
 end
 disp('Extract Spike Sorting Result    done.');
